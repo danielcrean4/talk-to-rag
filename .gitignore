@@ -18,7 +18,7 @@ library/
 *.tfvars
 
 # Local model config with private endpoints
-config/models.local.toml
+services/ai/config/models.local.toml
 
 # Model weights
 *.gguf
