@@ -1,0 +1,52 @@
+# Which models talk-to-rag can use, and which it uses by default.
+# No secrets or private hosts here: a provider names the environment variable that holds its key,
+# and private endpoints go in config/models.local.toml (gitignored), whose entries add to or
+# replace these. See config/models.local.example.toml.
+
+[defaults]
+chat = "local-small"
+embed = "local-embed"
+
+# --- Providers: where models are served -------------------------------------
+
+[providers.ollama]
+adapter = "openai_compatible"
+base_url = "http://localhost:11434/v1"
+
+[providers.offline]
+adapter = "fake"
+
+# --- Models: a name the code uses, mapped to a provider and the server's id ---
+
+[models.local-small]
+provider = "ollama"
+kind = "chat"
+name = "gemma3:1b"
+options = { temperature = 0.2 }
+
+[models.local-4b]
+provider = "ollama"
+kind = "chat"
+name = "gemma3:4b"
+options = { temperature = 0.2 }
+
+[models.local-phi]
+provider = "ollama"
+kind = "chat"
+name = "phi4-mini"
+options = { temperature = 0.2 }
+
+[models.local-embed]
+provider = "ollama"
+kind = "embed"
+name = "nomic-embed-text"
+
+[models.fake-chat]
+provider = "offline"
+kind = "chat"
+name = "fake"
+
+[models.fake-embed]
+provider = "offline"
+kind = "embed"
+name = "fake"
