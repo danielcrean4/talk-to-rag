@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TalkToRag.Api/TalkToRag.Api.csproj" />
+    <Project Path="src/TalkToRag.Application/TalkToRag.Application.csproj" />
+    <Project Path="src/TalkToRag.Domain/TalkToRag.Domain.csproj" />
+    <Project Path="src/TalkToRag.Infrastructure/TalkToRag.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TalkToRag.UnitTests/TalkToRag.UnitTests.csproj" />
+  </Folder>
+</Solution>

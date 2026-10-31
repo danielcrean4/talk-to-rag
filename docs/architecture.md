@@ -4,6 +4,8 @@
 
 `talk-to-rag` is a voice-enabled Retrieval-Augmented Generation (RAG) research and study platform designed around **Notebooks**, **Sources**, **Hybrid Search (`pgvector` + PostgreSQL Full-Text Search)**, and **Grounded Citations**.
 
+**Product focus: sources first, retrieval first.** The main question the app answers is *which of my sources cover this, and where in them* (source, page, section, snippet). A model-written summary of the found passages is optional, layered on top. Chat is not the main screen.
+
 It demonstrates a clean, polyglot enterprise architecture (**C# / ASP.NET Core**, **Python / FastAPI**, **Angular**, **PostgreSQL + `pgvector`**, and **Docker Compose**) with strict separation of concerns:
 1. **Cross-Boundary Ports:** `IBlobStorage` / `LocalBlobStorage` (paired with Python `BlobStorage` / `LocalBlobStorage`), `IAiClient` / `HttpAiClient`, `ICurrentUser` / `ClaimsCurrentUser`, `ITokenGenerator` / `JwtTokenGenerator`.
 2. **Domain Model (`TalkToRag.Domain`):**
@@ -172,7 +174,7 @@ talk-to-rag/
 │   │
 │   └── api/                                        # C# / ASP.NET Core Clean Architecture Solution
 │       ├── Dockerfile
-│       ├── TalkToRag.sln
+│       ├── TalkToRag.slnx                              # .NET 10 XML solution format
 │       ├── src/
 │       │   ├── TalkToRag.Domain/
 │       │   │   ├── TalkToRag.Domain.csproj
@@ -383,6 +385,6 @@ erDiagram
 |---|---|---|
 | **Milestone 1** | Monorepo layout (`services/ai`, `services/api`, `web`), US-origin model config, Shared `BlobStorage`, Python FastAPI scaffold, .NET Clean Architecture + EF Core `pgvector` schema + JWT Auth, `compose.yaml` | Clean Architecture ports/adapters, `pgvector` HNSW indexes, Postgres `tsvector` GIN indexes, shared blob storage by UUID |
 | **Milestone 2** | Source Upload (`POST /api/sources`), `SourceIngestionWorker`, Python PDF/Markdown parsing & semantic chunking (`POST /v1/sources/ingest`) | Chunk size & overlap trade-offs, preserving page citations & LaTeX equations, batch embedding |
-| **Milestone 3** | Hybrid Search (`POST /api/search`) & Multi-Query RAG Conversations (`POST /api/conversations/{id}/messages`) | Cosine distance (`<=>`), Reciprocal Rank Fusion (RRF), multi-query expansion, pre-filtered `ConversationScope` (`Notebook` & `Tag` filters), grounded citation prompting |
-| **Milestone 4** | Angular UI (Notebook/Source library, Hybrid Search view, Scoped Chat with clickable page citations) + Push-to-Talk Voice (Whisper STT & Piper TTS) | Streaming SSE responses in Angular, browser `MediaRecorder` push-to-talk workflow |
+| **Milestone 3** | Hybrid Search (`POST /api/search`) returning passages grouped by source with page/section locations, then an optional grounded summary of those passages (`POST /api/conversations/{id}/messages`, which also keeps the history of what was asked and found) | Cosine distance (`<=>`), Reciprocal Rank Fusion (RRF), multi-query expansion, pre-filtered `ConversationScope` (`Notebook` & `Tag` filters), grounded citation prompting |
+| **Milestone 4** | Angular UI matching the sources-first prototype: Sources grid (file icon, name, description on hover), drag-and-drop upload and drag-to-notebook, top-centred view toggles (Sources / Results / History), floating search bar with a prominent push-to-talk mic, Results as passages with "open at page" links, optional summary with read-aloud (Whisper STT & Piper TTS) | Streaming SSE responses in Angular, browser `MediaRecorder` push-to-talk workflow, HTML drag and drop |
 | **Milestone 5** | Automated Evaluation Suite (`hit@k`, `MRR`) + GitHub Actions CI | Golden Q&A dataset, retrieval recall (`hit@k`) and ranking quality (`MRR`), regression gating in CI |

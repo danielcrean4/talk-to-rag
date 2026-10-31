@@ -23,3 +23,7 @@ services/ai/config/models.local.toml
 # Model weights
 *.gguf
 *.safetensors
+
+# .NET build output
+bin/
+obj/
