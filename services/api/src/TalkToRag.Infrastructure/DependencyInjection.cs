@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using TalkToRag.Application.Common.Interfaces;
 using TalkToRag.Infrastructure.Persistence;
+using TalkToRag.Infrastructure.Security;
 
 namespace TalkToRag.Infrastructure;
 
@@ -15,6 +17,10 @@ public static class DependencyInjection
         services.AddDbContext<TalkToRagDbContext>(options => options
             .UseNpgsql(connectionString, npgsql => npgsql.UseVector())
             .UseSnakeCaseNamingConvention());
+        services.AddScoped<IUserRepository, UserRepository>();
+
+        services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.Section));
+        services.AddSingleton<ITokenGenerator, JwtTokenGenerator>();
 
         return services;
     }
