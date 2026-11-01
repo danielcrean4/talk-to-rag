@@ -52,4 +52,4 @@ Local first. An optional cloud deployment on Google Cloud's free tier, defined i
 
 ## License
 
-MIT
+MIT. Third-party tools, libraries and models are credited in [CREDITS.md](CREDITS.md).
