@@ -69,6 +69,6 @@ Weights are downloaded by each user with `ollama pull`; talk-to-rag does not red
 
 ## Internal provenance
 
-- **AI-assisted code and docs.** Written with Claude Code (Anthropic, model Claude Opus 5.5) between 2026-10-30 and 2026-11-01, directed by Dan in conversation; every such commit carries a `Co-Authored-By: Claude Opus 5.5` trailer. `docs/architecture.md` was drafted in a separate AI-assisted planning session; record which assistant and model here.
+- **AI-assisted code and docs.** Written with Claude Code (Anthropic, model Claude Opus 5.5) between 2026-10-30 and 2026-11-01, directed by Dan in conversation; every such commit carries a `Co-Authored-By: Claude Opus 5.5` trailer. `docs/architecture.md` was drafted in a separate AI-assisted planning session, in either Google Antigravity (Gemini) or Claude (claude.ai chat); which one, and the model, wasn't recorded at the time. Later edits were made with Claude Code.
 - **UI prototype (outside the repo).** A clickable mockup made as a Claude artifact uses the [Inter](https://github.com/rsms/inter) and [IBM Plex Mono](https://github.com/IBM/plex) fonts (both SIL Open Font License 1.1, via Google Fonts). Credit them again if they reach the Angular app.
 - **Sample text.** Passages used in tests and demos (TD learning, Monte Carlo, banjo tuning) were written for this project, not quoted from a book.
