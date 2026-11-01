@@ -2,7 +2,22 @@
 
 Ask questions about your own documents out loud and hear answers back, with citations to the page they came from.
 
-**Status:** early. There is nothing to run yet; this README is the plan.
+**Status:** early. The services, database schema and sign-in run locally; ingestion and search come next. Design: [docs/architecture.md](docs/architecture.md).
+
+## Run it locally
+
+Needs Docker Desktop, the .NET 10 SDK, [uv](https://docs.astral.sh/uv/) and [Ollama](https://ollama.com) running on the host (`ollama pull nomic-embed-text gemma3:1b`).
+
+```bash
+make up        # build and start Postgres (pgvector), the Python AI service and the .NET API
+make migrate   # create the database schema
+make health    # both services answer
+make test      # Python and .NET tests
+make down      # stop (data is kept in Docker volumes)
+```
+
+- .NET API: http://localhost:5000/api/health, contract at http://localhost:5000/openapi/v1.json
+- AI service: http://localhost:8000/docs
 
 ## Why
 

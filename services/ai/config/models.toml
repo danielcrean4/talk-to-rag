@@ -12,6 +12,8 @@ embed = "local-embed"
 [providers.ollama]
 adapter = "openai_compatible"
 base_url = "http://localhost:11434/v1"
+# Set by compose.yaml: inside a container, the Mac's Ollama is at host.docker.internal.
+base_url_env = "OLLAMA_BASE_URL"
 
 [providers.offline]
 adapter = "fake"

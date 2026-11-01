@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 from talk_to_rag.llm import ChatModel, Embedder, Message, ModelError, chat_model, embedder
-from talk_to_rag.llm.adapters.openai_compatible import OpenAICompatibleChat, OpenAICompatibleEmbedder
+from talk_to_rag.llm.adapters.openai_compatible import OpenAICompatibleChat, OpenAICompatibleEmbedder, base_url
 from talk_to_rag.llm.config import ConfigError, _read, load, merge, parse
 from talk_to_rag.llm.factory import resolve_name
 
@@ -113,6 +113,15 @@ def test_openai_compatible_adapter_maps_requests_and_responses():
     assert reply == "pong"
     assert calls["chat"] == {"model": "m", "messages": [{"role": "user", "content": "ping"}], "temperature": 0}
     assert vectors == [[0.1, 0.2]] and calls["embed"] == {"model": "e", "input": ["text"]}
+
+
+def test_base_url_can_be_overridden_from_the_environment(monkeypatch):
+    provider = {"base_url": "http://localhost:11434/v1", "base_url_env": "OLLAMA_BASE_URL"}
+    monkeypatch.delenv("OLLAMA_BASE_URL", raising=False)
+    assert base_url(provider) == "http://localhost:11434/v1"
+
+    monkeypatch.setenv("OLLAMA_BASE_URL", "http://host.docker.internal:11434/v1")
+    assert base_url(provider) == "http://host.docker.internal:11434/v1"
 
 
 def test_openai_compatible_adapter_hides_library_errors():

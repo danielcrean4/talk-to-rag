@@ -61,7 +61,13 @@ def _client(provider: Mapping[str, Any]) -> Any:
     api_key = os.environ.get(key_env) if key_env else _PLACEHOLDER_KEY
     if not api_key:
         raise RuntimeError(f"Set the {key_env} environment variable for this provider.")
-    return OpenAI(base_url=provider["base_url"], api_key=api_key)
+    return OpenAI(base_url=base_url(provider), api_key=api_key)
+
+
+def base_url(provider: Mapping[str, Any]) -> str:
+    # A container reaches the host's Ollama at a different address, so the environment may override it.
+    url_env = provider.get("base_url_env")
+    return (os.environ.get(url_env) if url_env else None) or provider["base_url"]
 
 
 def build_chat(provider: Mapping[str, Any], model: Mapping[str, Any]) -> OpenAICompatibleChat:

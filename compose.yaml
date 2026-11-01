@@ -1,0 +1,60 @@
+# Local stack: Postgres + the Python AI service + the .NET API.
+# Ollama runs natively on the Mac (Docker on macOS has no GPU access); containers reach it
+# at host.docker.internal. Ports are published on 127.0.0.1 only, never the network.
+
+name: talk-to-rag
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: talk_to_rag
+      POSTGRES_PASSWORD: talk_to_rag
+      POSTGRES_DB: talk_to_rag
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "talk_to_rag", "-d", "talk_to_rag"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  ai:
+    build: services/ai
+    environment:
+      OLLAMA_BASE_URL: http://host.docker.internal:11434/v1
+      TALK_TO_RAG_BLOB_ROOT: /var/talk-to-rag/blobs
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - blobs:/var/talk-to-rag/blobs
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: services/api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ai:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__TalkToRag: Host=postgres;Port=5432;Database=talk_to_rag;Username=talk_to_rag;Password=talk_to_rag
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:-local-development-only-signing-key-not-a-secret}
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - blobs:/var/talk-to-rag/blobs
+
+volumes:
+  pgdata:
+  # Uploaded sources and audio, shared by key between the API and the AI service.
+  blobs:
