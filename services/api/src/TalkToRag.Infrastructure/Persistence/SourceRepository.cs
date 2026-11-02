@@ -55,6 +55,24 @@ public sealed class SourceRepository(TalkToRagDbContext db) : ISourceRepository
             .Select(s => s.Id)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Guid>?> FindReadySourceIdsForScopeAsync(Guid userId, IReadOnlyList<Guid> notebookIds, IReadOnlyList<Guid> tagIds, IReadOnlyList<Guid> sourceIds, CancellationToken cancellationToken)
+    {
+        if (notebookIds.Count == 0 && tagIds.Count == 0 && sourceIds.Count == 0)
+        {
+            return null; // All ready sources for user are allowed
+        }
+
+        var query = db.Sources
+            .Where(s => s.UserId == userId && s.Status == SourceStatus.Ready);
+
+        query = query.Where(s =>
+            (sourceIds.Count > 0 && sourceIds.Contains(s.Id)) ||
+            (notebookIds.Count > 0 && s.Notebooks.Any(n => notebookIds.Contains(n.NotebookId))) ||
+            (tagIds.Count > 0 && s.Tags.Any(t => tagIds.Contains(t.TagId))));
+
+        return await query.Select(s => s.Id).ToListAsync(cancellationToken);
+    }
+
     public async Task SaveChunksAsync(Guid sourceId, IReadOnlyList<SourceChunk> chunks, CancellationToken cancellationToken)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);

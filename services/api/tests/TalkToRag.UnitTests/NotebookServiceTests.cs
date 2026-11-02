@@ -194,6 +194,9 @@ public class NotebookServiceTests
         public Task<IReadOnlyList<Guid>> FindPendingOrProcessingIdsAsync(CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyList<Guid>>([]);
 
+        public Task<IReadOnlyList<Guid>?> FindReadySourceIdsForScopeAsync(Guid userId, IReadOnlyList<Guid> notebookIds, IReadOnlyList<Guid> tagIds, IReadOnlyList<Guid> sourceIds, CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<Guid>?>(null);
+
         public Task SaveChunksAsync(Guid sourceId, IReadOnlyList<SourceChunk> chunks, CancellationToken cancellationToken) =>
             Task.CompletedTask;
 

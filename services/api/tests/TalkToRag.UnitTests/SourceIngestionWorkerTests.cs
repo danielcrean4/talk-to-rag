@@ -372,6 +372,9 @@ public class SourceIngestionWorkerTests
         public Task<IReadOnlyList<Guid>> FindPendingOrProcessingIdsAsync(CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyList<Guid>>(_all.Where(s => s.Status == SourceStatus.Pending || s.Status == SourceStatus.Processing).Select(s => s.Id).ToList());
 
+        public Task<IReadOnlyList<Guid>?> FindReadySourceIdsForScopeAsync(Guid userId, IReadOnlyList<Guid> notebookIds, IReadOnlyList<Guid> tagIds, IReadOnlyList<Guid> sourceIds, CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<Guid>?>(null);
+
         public Task SaveChunksAsync(Guid sourceId, IReadOnlyList<SourceChunk> chunks, CancellationToken cancellationToken)
         {
             var s = _all.FirstOrDefault(s => s.Id == sourceId);
@@ -412,6 +415,12 @@ public class SourceIngestionWorkerTests
             if (_exception is not null) throw _exception;
             return Task.FromResult(_response!);
         }
+
+        public Task<ExpandQueryResponse> ExpandQueryAsync(ExpandQueryRequest request, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new ExpandQueryResponse([]));
+
+        public Task<AnswerResponse> GenerateAnswerAsync(AnswerRequest request, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new AnswerResponse("", []));
     }
 
     private sealed class StubHttpMessageHandler(HttpStatusCode statusCode, string content) : HttpMessageHandler
