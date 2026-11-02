@@ -63,6 +63,7 @@ Weights are downloaded by each user with `ollama pull`; talk-to-rag does not red
 | [Docker Desktop](https://www.docker.com/products/docker-desktop/) and Docker Compose | Engine 29.9.2 | Docker Subscription Service Agreement (Desktop); Apache-2.0 (Engine, Compose) | Local stack (`compose.yaml`) |
 | [.NET SDK](https://github.com/dotnet/sdk) (`mcr.microsoft.com/dotnet/sdk:10.0` build image) | 10.0.403 | MIT | Building the API |
 | dotnet-ef (Microsoft.EntityFrameworkCore.Design) | 10.0.14 | MIT | Creating and applying migrations |
+| [Testcontainers for .NET](https://dotnet.testcontainers.org) | 4.16.0 | MIT | Real PostgreSQL + pgvector container integration tests in `TalkToRag.IntegrationTests` |
 | [xUnit](https://github.com/xunit/xunit) | 2.9.3 (runner 3.1.4) | Apache-2.0 | .NET tests |
 | Microsoft.NET.Test.Sdk | 17.14.1 | MIT | .NET test host |
 | [coverlet.collector](https://github.com/coverlet-coverage/coverlet) | 6.0.4 | MIT | .NET code coverage |

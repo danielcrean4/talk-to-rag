@@ -24,6 +24,7 @@ public static class DependencyInjection
         services.AddScoped<ISourceRepository, SourceRepository>();
         services.AddScoped<INotebookRepository, NotebookRepository>();
         services.AddScoped<ITagRepository, TagRepository>();
+        services.AddScoped<ISearchRepository, SearchRepository>();
 
         var blobRoot = configuration["BlobStorage:Root"] ?? "/var/talk-to-rag/blobs";
         services.AddSingleton<IBlobStorage>(new LocalBlobStorage(blobRoot));

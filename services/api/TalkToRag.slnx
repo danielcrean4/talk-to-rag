@@ -6,6 +6,7 @@
     <Project Path="src/TalkToRag.Infrastructure/TalkToRag.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/TalkToRag.IntegrationTests/TalkToRag.IntegrationTests.csproj" />
     <Project Path="tests/TalkToRag.UnitTests/TalkToRag.UnitTests.csproj" />
   </Folder>
 </Solution>
