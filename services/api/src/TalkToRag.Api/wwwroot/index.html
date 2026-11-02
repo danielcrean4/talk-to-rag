@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>talk-to-rag | Hands-free RAG Study Tool</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="app">
+    <!-- Navigation Bar -->
+    <header class="top-nav">
+      <div class="nav-brand">
+        <div class="logo-icon">📚</div>
+        <div class="brand-text">
+          <span class="brand-title">talk-to-rag</span>
+          <span class="brand-subtitle">Hands-free RAG Study Tool</span>
+        </div>
+      </div>
+
+      <!-- Top-Centred View Toggles -->
+      <nav class="view-toggles" role="tablist">
+        <button class="nav-btn active" data-view="sources" id="tab-sources" role="tab" aria-selected="true">
+          <span class="icon">📁</span> Sources
+        </button>
+        <button class="nav-btn" data-view="search" id="tab-search" role="tab" aria-selected="false">
+          <span class="icon">🔍</span> Search & Results
+        </button>
+        <button class="nav-btn" data-view="history" id="tab-history" role="tab" aria-selected="false">
+          <span class="icon">🕒</span> History
+        </button>
+      </nav>
+
+      <!-- User Authentication Controls -->
+      <div class="user-session" id="userSession">
+        <div class="user-badge" id="userBadge" style="display: none;">
+          <span class="avatar">👤</span>
+          <span class="user-email" id="userEmailDisplay"></span>
+          <button class="btn-ghost btn-sm" id="signOutBtn" title="Sign Out">Sign Out</button>
+        </div>
+        <button class="btn-primary btn-sm" id="openAuthBtn">Sign In</button>
+      </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="content-container">
+      
+      <!-- VIEW 1: SOURCES -->
+      <section class="view-pane active" id="view-sources">
+        <div class="section-header">
+          <div>
+            <h2>Sources & Ingestion</h2>
+            <p class="section-desc">Upload textbooks, papers (PDF), and notes (Markdown/Text) for semantic indexing.</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn-secondary btn-sm" id="refreshSourcesBtn">↻ Refresh</button>
+          </div>
+        </div>
+
+        <!-- Notebook Filters -->
+        <div class="notebooks-bar">
+          <span class="bar-label">Notebooks:</span>
+          <div class="notebook-pills" id="notebookPills">
+            <button class="pill-btn active" data-notebook="all">All Sources</button>
+          </div>
+          <button class="btn-ghost btn-sm" id="newNotebookBtn">+ New Notebook</button>
+        </div>
+
+        <!-- Dropzone Upload Area -->
+        <div class="upload-dropzone" id="dropzone">
+          <input type="file" id="fileInput" accept=".pdf,.md,.markdown,.txt" style="display: none;">
+          <div class="dropzone-content">
+            <div class="dropzone-icon">📥</div>
+            <div class="dropzone-prompt">
+              <strong>Drag & drop documents here</strong>, or <span class="browse-link" id="browseFilesBtn">browse files</span>
+            </div>
+            <div class="dropzone-hint">Supports PDF, Markdown, and Plain Text (up to 50 MB)</div>
+          </div>
+          <div class="upload-progress" id="uploadProgress" style="display: none;">
+            <div class="spinner"></div>
+            <span id="uploadStatusText">Uploading and initiating background ingestion...</span>
+          </div>
+        </div>
+
+        <!-- Sources Grid -->
+        <div class="sources-grid" id="sourcesGrid">
+          <div class="empty-state">
+            <p>No documents uploaded yet. Drop a PDF or Markdown file above to start studying!</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 2: SEARCH & RESULTS -->
+      <section class="view-pane" id="view-search">
+        <!-- Floating Search Hero -->
+        <div class="search-hero">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="searchInput" placeholder="Ask a question or search passages (e.g. 'what is the difference between TD and Monte Carlo?')" autocomplete="off">
+            <button class="btn-mic" id="voiceSearchBtn" title="Speak question aloud">🎙️</button>
+            <button class="btn-primary" id="searchSubmitBtn">Search</button>
+          </div>
+
+          <!-- Search Options Bar -->
+          <div class="search-options">
+            <div class="option-item">
+              <label for="searchModeSelect">Retrieval Mode:</label>
+              <select id="searchModeSelect">
+                <option value="hybrid" selected>Hybrid (FTS + Vector RRF)</option>
+                <option value="semantic">Semantic (Meaning / HNSW)</option>
+                <option value="keyword">Keyword (Full-Text Search)</option>
+              </select>
+            </div>
+
+            <div class="option-item">
+              <label for="searchNotebookSelect">Scope:</label>
+              <select id="searchNotebookSelect">
+                <option value="">All Ready Sources</option>
+              </select>
+            </div>
+
+            <div class="option-item checkbox-item">
+              <input type="checkbox" id="expandQueryCheckbox">
+              <label for="expandQueryCheckbox" title="Uses local-small chat model to rewrite query into 2-3 retrieval terms">Query Expansion</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI Summary Card (Optional / Generated on demand) -->
+        <div class="summary-section" id="summarySection" style="display: none;">
+          <div class="summary-card">
+            <div class="summary-header">
+              <div class="summary-title">
+                <span class="sparkle-icon">✨</span> Grounded AI Study Summary
+              </div>
+              <div class="summary-actions">
+                <button class="btn-ghost btn-sm" id="speakSummaryBtn" title="Listen to summary">🔊 Read Aloud</button>
+              </div>
+            </div>
+            <div class="summary-body" id="summaryAnswer"></div>
+            <div class="summary-footer">
+              <small>Citations: <span id="summaryCitationsList"></span></small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search Results Section -->
+        <div class="results-container" id="resultsContainer">
+          <div class="results-header" id="resultsHeader" style="display: none;">
+            <h3 id="resultsQueryTitle">Results</h3>
+            <button class="btn-primary btn-sm" id="generateSummaryBtn">✨ Generate AI Summary</button>
+          </div>
+
+          <div class="passages-groups" id="passagesGroups">
+            <div class="empty-state">
+              <p>Type a question or term above to retrieve cited passages from your sources.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 3: HISTORY -->
+      <section class="view-pane" id="view-history">
+        <div class="section-header">
+          <div>
+            <h2>Search & Study History</h2>
+            <p class="section-desc">Past questions, retrieved passages, and cited summaries.</p>
+          </div>
+          <button class="btn-secondary btn-sm" id="refreshHistoryBtn">↻ Refresh</button>
+        </div>
+
+        <div class="history-layout">
+          <div class="history-list" id="historyList">
+            <div class="empty-state">No search history recorded yet.</div>
+          </div>
+          <div class="history-details" id="historyDetails">
+            <div class="empty-state">Select a past conversation on the left to review results.</div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Sign In / Register Modal -->
+    <div class="modal-backdrop" id="authModal" style="display: none;">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3 id="authModalTitle">Sign In to talk-to-rag</h3>
+          <button class="btn-close" id="closeAuthModalBtn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="authEmail">Email Address</label>
+            <input type="email" id="authEmail" placeholder="dan@test.com">
+          </div>
+          <div class="form-group" id="displayNameGroup" style="display: none;">
+            <label for="authDisplayName">Display Name</label>
+            <input type="text" id="authDisplayName" placeholder="Dan">
+          </div>
+          <div class="form-group">
+            <label for="authPassword">Password</label>
+            <input type="password" id="authPassword" placeholder="••••••••">
+          </div>
+          <div class="auth-error-msg" id="authErrorMsg" style="display: none;"></div>
+          
+          <button class="btn-primary btn-block" id="authSubmitBtn">Sign In</button>
+
+          <div class="auth-toggle">
+            <span id="authToggleText">Need an account?</span>
+            <a href="#" id="authToggleLink">Register</a>
+          </div>
+
+          <div class="quick-fill">
+            <button class="btn-ghost btn-sm" id="quickRegisterBtn">⚡ Quick Register / Demo User</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Notebook Modal -->
+    <div class="modal-backdrop" id="notebookModal" style="display: none;">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3>Create New Notebook</h3>
+          <button class="btn-close" id="closeNotebookModalBtn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="notebookNameInput">Notebook Name</label>
+            <input type="text" id="notebookNameInput" placeholder="e.g. Reinforcement Learning">
+          </div>
+          <div class="form-group">
+            <label for="notebookDescInput">Description (Optional)</label>
+            <input type="text" id="notebookDescInput" placeholder="e.g. Sutton & Barto notes, algorithms">
+          </div>
+          <div class="auth-error-msg" id="notebookErrorMsg" style="display: none;"></div>
+          <button class="btn-primary btn-block" id="createNotebookSubmitBtn">Create Notebook</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
