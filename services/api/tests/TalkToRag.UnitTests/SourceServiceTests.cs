@@ -1,0 +1,263 @@
+using System.Text;
+using TalkToRag.Application.Common.Exceptions;
+using TalkToRag.Application.Common.Interfaces;
+using TalkToRag.Application.Sources;
+using TalkToRag.Domain.Entities;
+using TalkToRag.Domain.Enums;
+
+namespace TalkToRag.UnitTests;
+
+public class SourceServiceTests
+{
+    private readonly InMemorySourceRepository _repository = new();
+    private readonly InMemoryBlobStorage _storage = new();
+    private readonly InMemoryIngestionQueue _queue = new();
+    private readonly TestCurrentUser _currentUser = new() { UserId = Guid.NewGuid() };
+    private readonly FixedClock _clock = new();
+
+    private SourceService CreateService() =>
+        new(_repository, _storage, _queue, _currentUser, _clock);
+
+    [Fact]
+    public async Task UploadAsync_StoresBlob_CreatesPendingSource_AndEnqueuesJob()
+    {
+        var service = CreateService();
+        var content = Encoding.UTF8.GetBytes("# Introduction to RAG\n\nSome text content.");
+        using var stream = new MemoryStream(content);
+
+        var response = await service.UploadAsync("textbook.md", "text/markdown", stream, default);
+
+        Assert.Equal("Pending", response.Status);
+        Assert.Equal("textbook", response.Title);
+
+        var stored = Assert.Single(_repository.All);
+        Assert.Equal(response.Id, stored.Id);
+        Assert.Equal(_currentUser.UserId, stored.UserId);
+        Assert.Equal("textbook.md", stored.FileName);
+        Assert.Equal("text/markdown", stored.ContentType);
+        Assert.Equal(content.Length, stored.SizeBytes);
+        Assert.Equal(SourceStatus.Pending, stored.Status);
+
+        // Blob saved
+        Assert.True(_storage.Written.ContainsKey(stored.BlobKey));
+        Assert.Equal(content, _storage.Written[stored.BlobKey]);
+
+        // Job enqueued
+        var enqueued = Assert.Single(_queue.Enqueued);
+        Assert.Equal(response.Id, enqueued);
+    }
+
+    [Theory]
+    [InlineData("test.exe")]
+    [InlineData("doc.docx")]
+    [InlineData("image.png")]
+    [InlineData("no-extension")]
+    public async Task UploadAsync_RejectsUnsupportedFileExtension(string fileName)
+    {
+        var service = CreateService();
+        using var stream = new MemoryStream([1, 2, 3]);
+
+        await Assert.ThrowsAsync<RequestValidationException>(() =>
+            service.UploadAsync(fileName, "application/octet-stream", stream, default));
+
+        Assert.Empty(_repository.All);
+        Assert.Empty(_queue.Enqueued);
+    }
+
+    [Fact]
+    public async Task UploadAsync_RejectsEmptyFile()
+    {
+        var service = CreateService();
+        using var stream = new MemoryStream([]);
+
+        await Assert.ThrowsAsync<RequestValidationException>(() =>
+            service.UploadAsync("notes.txt", "text/plain", stream, default));
+    }
+
+    [Fact]
+    public async Task UploadAsync_RequiresAuthenticatedUser()
+    {
+        _currentUser.UserId = Guid.Empty;
+        var service = CreateService();
+        using var stream = new MemoryStream([1, 2, 3]);
+
+        // If UserId is missing or not set, ClaimsCurrentUser throws InvalidOperationException
+        _currentUser.ThrowOnAccess = true;
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.UploadAsync("notes.txt", "text/plain", stream, default));
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_ReturnsSource_WhenOwnedByCaller()
+    {
+        var service = CreateService();
+        var sourceId = Guid.NewGuid();
+        _repository.All.Add(new Source
+        {
+            Id = sourceId,
+            UserId = _currentUser.UserId,
+            Title = "TD Learning",
+            FileName = "td.pdf",
+            ContentType = "application/pdf",
+            SizeBytes = 1024,
+            BlobKey = "sources/td.pdf",
+            Status = SourceStatus.Ready,
+            CreatedAtUtc = _clock.GetUtcNow()
+        });
+
+        var result = await service.GetByIdAsync(sourceId, default);
+
+        Assert.Equal(sourceId, result.Id);
+        Assert.Equal("TD Learning", result.Title);
+        Assert.Equal("Ready", result.Status);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_ThrowsNotFound_WhenOwnedByAnotherUser()
+    {
+        var service = CreateService();
+        var sourceId = Guid.NewGuid();
+        _repository.All.Add(new Source
+        {
+            Id = sourceId,
+            UserId = Guid.NewGuid(), // Different user!
+            Title = "Other user notes",
+            FileName = "other.pdf",
+            ContentType = "application/pdf",
+            SizeBytes = 1024,
+            BlobKey = "sources/other.pdf",
+            Status = SourceStatus.Ready,
+            CreatedAtUtc = _clock.GetUtcNow()
+        });
+
+        await Assert.ThrowsAsync<NotFoundException>(() => service.GetByIdAsync(sourceId, default));
+    }
+
+    [Fact]
+    public async Task ListAsync_ReturnsOnlySourcesForCurrentCaller()
+    {
+        var service = CreateService();
+        var mySource = new Source
+        {
+            Id = Guid.NewGuid(),
+            UserId = _currentUser.UserId,
+            Title = "My Notes",
+            FileName = "my.md",
+            ContentType = "text/markdown",
+            SizeBytes = 50,
+            BlobKey = "sources/my.md",
+            Status = SourceStatus.Ready,
+            CreatedAtUtc = _clock.GetUtcNow()
+        };
+        var otherSource = new Source
+        {
+            Id = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
+            Title = "Someone else's notes",
+            FileName = "other.md",
+            ContentType = "text/markdown",
+            SizeBytes = 50,
+            BlobKey = "sources/other.md",
+            Status = SourceStatus.Ready,
+            CreatedAtUtc = _clock.GetUtcNow()
+        };
+
+        _repository.All.Add(mySource);
+        _repository.All.Add(otherSource);
+
+        var list = await service.ListAsync(default);
+
+        var item = Assert.Single(list);
+        Assert.Equal(mySource.Id, item.Id);
+    }
+
+    private sealed class TestCurrentUser : ICurrentUser
+    {
+        public Guid UserId { get; set; }
+        public bool ThrowOnAccess { get; set; }
+        Guid ICurrentUser.UserId => ThrowOnAccess ? throw new InvalidOperationException("Unauthenticated") : UserId;
+    }
+
+    private sealed class InMemorySourceRepository : ISourceRepository
+    {
+        public List<Source> All { get; } = [];
+
+        public Task<Source?> FindByIdForUserAsync(Guid id, Guid userId, CancellationToken cancellationToken) =>
+            Task.FromResult(All.FirstOrDefault(s => s.Id == id && s.UserId == userId));
+
+        public Task<Source?> FindByIdAsync(Guid id, CancellationToken cancellationToken) =>
+            Task.FromResult(All.FirstOrDefault(s => s.Id == id));
+
+        public Task<IReadOnlyList<SourceDto>> ListForUserAsync(Guid userId, CancellationToken cancellationToken)
+        {
+            IReadOnlyList<SourceDto> result = All
+                .Where(s => s.UserId == userId)
+                .Select(s => new SourceDto(
+                    s.Id,
+                    s.Title,
+                    s.FileName,
+                    s.ContentType,
+                    s.SizeBytes,
+                    s.Status.ToString(),
+                    s.FailureReason,
+                    s.Chunks.Count,
+                    s.CreatedAtUtc))
+                .ToList();
+            return Task.FromResult(result);
+        }
+
+        public Task<IReadOnlyList<Guid>> FindPendingOrProcessingIdsAsync(CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<Guid>>(All.Where(s => s.Status == SourceStatus.Pending || s.Status == SourceStatus.Processing).Select(s => s.Id).ToList());
+
+        public Task AddAsync(Source source, CancellationToken cancellationToken)
+        {
+            All.Add(source);
+            return Task.CompletedTask;
+        }
+
+        public Task UpdateAsync(Source source, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+    }
+
+    private sealed class InMemoryBlobStorage : IBlobStorage
+    {
+        public Dictionary<string, byte[]> Written { get; } = [];
+
+        public async Task WriteAsync(string key, Stream content, CancellationToken cancellationToken = default)
+        {
+            using var ms = new MemoryStream();
+            await content.CopyToAsync(ms, cancellationToken);
+            Written[key] = ms.ToArray();
+        }
+
+        public Task<Stream> OpenReadAsync(string key, CancellationToken cancellationToken = default)
+        {
+            if (!Written.TryGetValue(key, out var bytes))
+                throw new NotFoundException($"Blob {key} not found");
+            return Task.FromResult<Stream>(new MemoryStream(bytes));
+        }
+
+        public Task DeleteAsync(string key, CancellationToken cancellationToken = default)
+        {
+            Written.Remove(key);
+            return Task.CompletedTask;
+        }
+
+        public Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Written.ContainsKey(key));
+    }
+
+    private sealed class InMemoryIngestionQueue : ISourceIngestionQueue
+    {
+        public List<Guid> Enqueued { get; } = [];
+
+        public ValueTask EnqueueAsync(Guid sourceId, CancellationToken cancellationToken = default)
+        {
+            Enqueued.Add(sourceId);
+            return ValueTask.CompletedTask;
+        }
+
+        public ValueTask<Guid> DequeueAsync(CancellationToken cancellationToken = default) =>
+            throw new NotImplementedException();
+    }
+}

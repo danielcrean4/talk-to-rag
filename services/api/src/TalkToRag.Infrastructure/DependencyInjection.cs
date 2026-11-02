@@ -19,6 +19,7 @@ public static class DependencyInjection
             .UseNpgsql(connectionString, npgsql => npgsql.UseVector())
             .UseSnakeCaseNamingConvention());
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<ISourceRepository, SourceRepository>();
 
         var blobRoot = configuration["BlobStorage:Root"] ?? "/var/talk-to-rag/blobs";
         services.AddSingleton<IBlobStorage>(new LocalBlobStorage(blobRoot));

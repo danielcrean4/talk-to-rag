@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using TalkToRag.Application.Auth;
+using TalkToRag.Application.Sources;
 using TalkToRag.Domain.Entities;
 
 namespace TalkToRag.Application;
@@ -12,6 +13,7 @@ public static class DependencyInjection
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<ISourceService, SourceService>();
         return services;
     }
 }
