@@ -271,6 +271,52 @@ public class SourceIngestionWorkerTests
     }
 
     [Fact]
+    public async Task Worker_ContinuesProcessing_WhenDatabaseFailsOnInitialFind()
+    {
+        var failedId = Guid.NewGuid();
+        var successId = Guid.NewGuid();
+        var successSource = new Source
+        {
+            Id = successId,
+            UserId = Guid.NewGuid(),
+            Title = "Success Book",
+            FileName = "success.pdf",
+            ContentType = "application/pdf",
+            BlobKey = "sources/success.pdf",
+            Status = SourceStatus.Pending
+        };
+
+        var repo = new CrashingOnFirstFindRepo([successSource], failedId);
+        var fakeAi = new FakeAiClient(new IngestSourceResponse([
+            new IngestedChunkDto(1, null, 0, "Content", [0.1f])
+        ]));
+        var queue = new ChannelSourceIngestionQueue();
+        await queue.EnqueueAsync(failedId);
+        await queue.EnqueueAsync(successId);
+
+        var services = new ServiceCollection();
+        services.AddSingleton<ISourceRepository>(repo);
+        services.AddSingleton<IAiClient>(fakeAi);
+        var provider = services.BuildServiceProvider();
+
+        using var cts = new CancellationTokenSource();
+        var worker = new SourceIngestionWorker(provider.GetRequiredService<IServiceScopeFactory>(), queue, NullLogger<SourceIngestionWorker>.Instance);
+
+        var runTask = worker.StartAsync(cts.Token);
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (DateTime.UtcNow < deadline && successSource.Status != SourceStatus.Ready)
+        {
+            await Task.Delay(50);
+        }
+
+        cts.Cancel();
+        try { await runTask; } catch { }
+
+        // Success source was still processed because worker did not crash on first job failure!
+        Assert.Equal(SourceStatus.Ready, successSource.Status);
+    }
+
+    [Fact]
     public async Task HttpAiClient_ParsesSuccessResponse()
     {
         var handler = new StubHttpMessageHandler(
@@ -300,7 +346,7 @@ public class SourceIngestionWorkerTests
         Assert.Equal([0.1f, 0.2f, 0.3f], chunk.Embedding);
     }
 
-    private sealed class FakeSourceRepo(IEnumerable<Source> sources) : ISourceRepository
+    private class FakeSourceRepo(IEnumerable<Source> sources) : ISourceRepository
     {
         private readonly List<Source> _all = [.. sources];
 
@@ -312,7 +358,10 @@ public class SourceIngestionWorkerTests
                 s.Id, s.Title, s.FileName, s.ContentType, s.SizeBytes, s.Status.ToString(), s.FailureReason, s.Chunks.Count, s.CreatedAtUtc));
         }
 
-        public Task<Source?> FindByIdAsync(Guid id, CancellationToken cancellationToken) =>
+        public Task<Source?> FindEntityByIdForUserAsync(Guid id, Guid userId, CancellationToken cancellationToken) =>
+            Task.FromResult(_all.FirstOrDefault(s => s.Id == id && s.UserId == userId));
+
+        public virtual Task<Source?> FindByIdAsync(Guid id, CancellationToken cancellationToken) =>
             Task.FromResult(_all.FirstOrDefault(s => s.Id == id));
 
         public Task<IReadOnlyList<SourceDto>> ListForUserAsync(Guid userId, CancellationToken cancellationToken) =>
@@ -337,6 +386,15 @@ public class SourceIngestionWorkerTests
 
         public Task AddAsync(Source source, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task UpdateAsync(Source source, CancellationToken cancellationToken) => Task.CompletedTask;
+    }
+
+    private sealed class CrashingOnFirstFindRepo(IEnumerable<Source> sources, Guid crashingId) : FakeSourceRepo(sources)
+    {
+        public override Task<Source?> FindByIdAsync(Guid id, CancellationToken cancellationToken)
+        {
+            if (id == crashingId) throw new InvalidOperationException("Postgres connection dropped.");
+            return base.FindByIdAsync(id, cancellationToken);
+        }
     }
 
     private sealed class FakeAiClient : IAiClient

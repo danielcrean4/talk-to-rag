@@ -137,6 +137,73 @@ public class SourceServiceTests
     }
 
     [Fact]
+    public async Task RetryAsync_ReEnqueuesFailedSource_AndSetsStatusToPending()
+    {
+        var service = CreateService();
+        var sourceId = Guid.NewGuid();
+        _repository.All.Add(new Source
+        {
+            Id = sourceId,
+            UserId = _currentUser.UserId,
+            Title = "Failed Book",
+            FileName = "book.pdf",
+            ContentType = "application/pdf",
+            BlobKey = "sources/book.pdf",
+            Status = SourceStatus.Failed,
+            FailureReason = "Model server down"
+        });
+
+        await service.RetryAsync(sourceId, default);
+
+        var source = _repository.All.Single(s => s.Id == sourceId);
+        Assert.Equal(SourceStatus.Pending, source.Status);
+        Assert.Null(source.FailureReason);
+        Assert.Contains(sourceId, _queue.Enqueued);
+    }
+
+    [Fact]
+    public async Task RetryAsync_IgnoresReadyOrProcessingSources()
+    {
+        var service = CreateService();
+        var sourceId = Guid.NewGuid();
+        _repository.All.Add(new Source
+        {
+            Id = sourceId,
+            UserId = _currentUser.UserId,
+            Title = "Ready Book",
+            FileName = "book.pdf",
+            ContentType = "application/pdf",
+            BlobKey = "sources/book.pdf",
+            Status = SourceStatus.Ready
+        });
+
+        await service.RetryAsync(sourceId, default);
+
+        var source = _repository.All.Single(s => s.Id == sourceId);
+        Assert.Equal(SourceStatus.Ready, source.Status);
+        Assert.Empty(_queue.Enqueued);
+    }
+
+    [Fact]
+    public async Task RetryAsync_ThrowsNotFound_WhenOwnedByOtherUser()
+    {
+        var service = CreateService();
+        var sourceId = Guid.NewGuid();
+        _repository.All.Add(new Source
+        {
+            Id = sourceId,
+            UserId = Guid.NewGuid(), // different user
+            Title = "Failed Book",
+            FileName = "book.pdf",
+            ContentType = "application/pdf",
+            BlobKey = "sources/book.pdf",
+            Status = SourceStatus.Failed
+        });
+
+        await Assert.ThrowsAsync<NotFoundException>(() => service.RetryAsync(sourceId, default));
+    }
+
+    [Fact]
     public async Task ListAsync_ReturnsOnlySourcesForCurrentCaller()
     {
         var service = CreateService();
@@ -200,6 +267,9 @@ public class SourceServiceTests
                 s.Chunks.Count,
                 s.CreatedAtUtc));
         }
+
+        public Task<Source?> FindEntityByIdForUserAsync(Guid id, Guid userId, CancellationToken cancellationToken) =>
+            Task.FromResult(All.FirstOrDefault(s => s.Id == id && s.UserId == userId));
 
         public Task<Source?> FindByIdAsync(Guid id, CancellationToken cancellationToken) =>
             Task.FromResult(All.FirstOrDefault(s => s.Id == id));

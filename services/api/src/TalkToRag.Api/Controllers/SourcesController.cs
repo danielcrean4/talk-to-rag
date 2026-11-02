@@ -40,4 +40,14 @@ public sealed class SourcesController(ISourceService sourceService) : Controller
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public Task<SourceDto> GetById(Guid id, CancellationToken cancellationToken) =>
         sourceService.GetByIdAsync(id, cancellationToken);
+
+    [HttpPost("{id:guid}/retry")]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Retry(Guid id, CancellationToken cancellationToken)
+    {
+        await sourceService.RetryAsync(id, cancellationToken);
+        return Accepted();
+    }
 }

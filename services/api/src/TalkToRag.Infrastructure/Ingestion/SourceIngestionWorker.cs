@@ -29,7 +29,18 @@ public sealed class SourceIngestionWorker(
                 break;
             }
 
-            await ProcessSourceAsync(sourceId, stoppingToken);
+            try
+            {
+                await ProcessSourceAsync(sourceId, stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Unhandled error processing source {SourceId}; worker continuing", sourceId);
+            }
         }
     }
 
@@ -98,28 +109,40 @@ public sealed class SourceIngestionWorker(
             logger.LogWarning(ex, "Source {SourceId} rejected by AI service: {Reason}", source.Id, ex.Message);
             source.Status = SourceStatus.Failed;
             source.FailureReason = ex.Message;
-            await repo.UpdateAsync(source, CancellationToken.None);
+            await TryUpdateStatusAsync(repo, source);
         }
         catch (AiServiceUnavailableException ex)
         {
             logger.LogWarning(ex, "Source {SourceId} deferred: AI service unavailable ({Reason})", source.Id, ex.Message);
             source.Status = SourceStatus.Failed;
             source.FailureReason = $"Embedding service unavailable: {ex.Message}";
-            await repo.UpdateAsync(source, CancellationToken.None);
+            await TryUpdateStatusAsync(repo, source);
         }
         catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
             logger.LogError(ex, "AI service timed out while ingesting source {SourceId}", source.Id);
             source.Status = SourceStatus.Failed;
             source.FailureReason = "Ingestion timed out while communicating with AI service.";
-            await repo.UpdateAsync(source, CancellationToken.None);
+            await TryUpdateStatusAsync(repo, source);
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             logger.LogError(ex, "Failed to process source {SourceId}", source.Id);
             source.Status = SourceStatus.Failed;
-            source.FailureReason = ex.Message;
+            source.FailureReason = "Ingestion failed unexpectedly. Please retry.";
+            await TryUpdateStatusAsync(repo, source);
+        }
+    }
+
+    private async Task TryUpdateStatusAsync(ISourceRepository repo, Source source)
+    {
+        try
+        {
             await repo.UpdateAsync(source, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to persist status update for source {SourceId}", source.Id);
         }
     }
 }

@@ -99,4 +99,24 @@ public sealed class SourceService(
 
         return source;
     }
+
+    public async Task RetryAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var userId = currentUser.UserId;
+        var source = await sourceRepository.FindEntityByIdForUserAsync(id, userId, cancellationToken);
+        if (source is null)
+        {
+            throw new NotFoundException($"Source '{id}' not found.");
+        }
+
+        if (source.Status != SourceStatus.Failed)
+        {
+            return;
+        }
+
+        source.Status = SourceStatus.Pending;
+        source.FailureReason = null;
+        await sourceRepository.UpdateAsync(source, cancellationToken);
+        await queue.EnqueueAsync(source.Id, cancellationToken);
+    }
 }

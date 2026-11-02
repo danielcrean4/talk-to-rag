@@ -23,6 +23,10 @@ public sealed class SourceRepository(TalkToRagDbContext db) : ISourceRepository
                 s.CreatedAtUtc))
             .FirstOrDefaultAsync(cancellationToken);
 
+    public Task<Source?> FindEntityByIdForUserAsync(Guid id, Guid userId, CancellationToken cancellationToken) =>
+        db.Sources
+            .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId, cancellationToken);
+
     public Task<Source?> FindByIdAsync(Guid id, CancellationToken cancellationToken) =>
         db.Sources
             .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
