@@ -42,8 +42,8 @@ Local first. An optional cloud deployment on Google Cloud's free tier, defined i
 
 ## Roadmap
 
-- [ ] Source config and ingestion for PDFs and Markdown
-- [ ] Chunking with page citations
+- [x] Source config and ingestion for PDFs and Markdown
+- [x] Chunking with page citations
 - [ ] Embedding and retrieval, with a CLI to ask questions by text
 - [ ] Retrieval evaluation set and CI
 - [ ] Voice in and out

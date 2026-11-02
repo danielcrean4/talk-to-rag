@@ -49,6 +49,8 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__TalkToRag: Host=postgres;Port=5432;Database=talk_to_rag;Username=talk_to_rag;Password=talk_to_rag
       Jwt__SigningKey: ${JWT_SIGNING_KEY:-local-development-only-signing-key-not-a-secret}
+      AiService__BaseUrl: http://ai:8000
+      BlobStorage__Root: /var/talk-to-rag/blobs
     ports:
       - "127.0.0.1:5000:5000"
     volumes:
