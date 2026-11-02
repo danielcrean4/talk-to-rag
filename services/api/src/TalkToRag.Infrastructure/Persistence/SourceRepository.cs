@@ -51,6 +51,18 @@ public sealed class SourceRepository(TalkToRagDbContext db) : ISourceRepository
             .Select(s => s.Id)
             .ToListAsync(cancellationToken);
 
+    public async Task SaveChunksAsync(Guid sourceId, IReadOnlyList<SourceChunk> chunks, CancellationToken cancellationToken)
+    {
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        await db.SourceChunks.Where(c => c.SourceId == sourceId).ExecuteDeleteAsync(cancellationToken);
+        if (chunks.Count > 0)
+        {
+            await db.SourceChunks.AddRangeAsync(chunks, cancellationToken);
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        await transaction.CommitAsync(cancellationToken);
+    }
+
     public async Task AddAsync(Source source, CancellationToken cancellationToken)
     {
         db.Sources.Add(source);

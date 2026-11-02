@@ -225,6 +225,20 @@ public class SourceServiceTests
         public Task<IReadOnlyList<Guid>> FindPendingOrProcessingIdsAsync(CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyList<Guid>>(All.Where(s => s.Status == SourceStatus.Pending || s.Status == SourceStatus.Processing).Select(s => s.Id).ToList());
 
+        public Task SaveChunksAsync(Guid sourceId, IReadOnlyList<SourceChunk> chunks, CancellationToken cancellationToken)
+        {
+            var source = All.FirstOrDefault(s => s.Id == sourceId);
+            if (source is not null)
+            {
+                source.Chunks.Clear();
+                foreach (var chunk in chunks)
+                {
+                    source.Chunks.Add(chunk);
+                }
+            }
+            return Task.CompletedTask;
+        }
+
         public Task AddAsync(Source source, CancellationToken cancellationToken)
         {
             All.Add(source);

@@ -25,6 +25,13 @@ public sealed class HttpAiClient(HttpClient httpClient) : IAiClient
             throw new AiIngestionException(message);
         }
 
+        if (response.StatusCode == HttpStatusCode.ServiceUnavailable)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            var message = TryExtractErrorMessage(errorBody) ?? "AI embedding service unavailable.";
+            throw new AiServiceUnavailableException(message);
+        }
+
         response.EnsureSuccessStatusCode();
 
         var result = await response.Content.ReadFromJsonAsync<IngestSourceResponse>(JsonOptions, cancellationToken);

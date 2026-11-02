@@ -158,6 +158,119 @@ public class SourceIngestionWorkerTests
     }
 
     [Fact]
+    public async Task HttpAiClient_ThrowsAiServiceUnavailableException_On503WithDetail()
+    {
+        var handler = new StubHttpMessageHandler(
+            HttpStatusCode.ServiceUnavailable,
+            """{"detail": "Ollama connection refused at http://localhost:11434"}""");
+        var client = new HttpAiClient(new HttpClient(handler) { BaseAddress = new Uri("http://localhost:8000") });
+
+        var ex = await Assert.ThrowsAsync<AiServiceUnavailableException>(() =>
+            client.IngestSourceAsync(new IngestSourceRequest(Guid.NewGuid(), "key", "application/pdf")));
+
+        Assert.Equal("Ollama connection refused at http://localhost:11434", ex.Message);
+    }
+
+    [Fact]
+    public async Task Worker_MarksSourceFailed_WhenAiServiceUnavailable()
+    {
+        var sourceId = Guid.NewGuid();
+        var source = new Source
+        {
+            Id = sourceId,
+            UserId = Guid.NewGuid(),
+            Title = "TD Learning",
+            FileName = "td.pdf",
+            ContentType = "application/pdf",
+            BlobKey = "sources/td.pdf",
+            Status = SourceStatus.Pending
+        };
+
+        var repo = new FakeSourceRepo([source]);
+        var fakeAi = new FakeAiClient(new AiServiceUnavailableException("Ollama connection refused"));
+        var queue = new ChannelSourceIngestionQueue();
+        await queue.EnqueueAsync(sourceId);
+
+        var services = new ServiceCollection();
+        services.AddSingleton<ISourceRepository>(repo);
+        services.AddSingleton<IAiClient>(fakeAi);
+        var provider = services.BuildServiceProvider();
+
+        using var cts = new CancellationTokenSource();
+        var worker = new SourceIngestionWorker(provider.GetRequiredService<IServiceScopeFactory>(), queue, NullLogger<SourceIngestionWorker>.Instance);
+
+        var runTask = worker.StartAsync(cts.Token);
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (DateTime.UtcNow < deadline && source.Status == SourceStatus.Pending)
+        {
+            await Task.Delay(50);
+        }
+
+        cts.Cancel();
+        try { await runTask; } catch { }
+
+        Assert.Equal(SourceStatus.Failed, source.Status);
+        Assert.Contains("Embedding service unavailable: Ollama connection refused", source.FailureReason);
+        Assert.Empty(source.Chunks);
+    }
+
+    [Fact]
+    public async Task Worker_ReIngest_ReplacesOldChunksWithoutDuplicateConstraint()
+    {
+        var sourceId = Guid.NewGuid();
+        var source = new Source
+        {
+            Id = sourceId,
+            UserId = Guid.NewGuid(),
+            Title = "TD Learning",
+            FileName = "td.pdf",
+            ContentType = "application/pdf",
+            BlobKey = "sources/td.pdf",
+            Status = SourceStatus.Pending
+        };
+        source.Chunks.Add(new SourceChunk
+        {
+            Id = Guid.NewGuid(),
+            SourceId = sourceId,
+            PageNumber = 1,
+            ChunkIndex = 0,
+            Content = "Old partial chunk",
+            Embedding = [0.0f]
+        });
+
+        var repo = new FakeSourceRepo([source]);
+        var fakeAi = new FakeAiClient(new IngestSourceResponse([
+            new IngestedChunkDto(1, null, 0, "New chunk 0", [0.1f, 0.2f]),
+            new IngestedChunkDto(1, null, 1, "New chunk 1", [0.3f, 0.4f])
+        ]));
+        var queue = new ChannelSourceIngestionQueue();
+        await queue.EnqueueAsync(sourceId);
+
+        var services = new ServiceCollection();
+        services.AddSingleton<ISourceRepository>(repo);
+        services.AddSingleton<IAiClient>(fakeAi);
+        var provider = services.BuildServiceProvider();
+
+        using var cts = new CancellationTokenSource();
+        var worker = new SourceIngestionWorker(provider.GetRequiredService<IServiceScopeFactory>(), queue, NullLogger<SourceIngestionWorker>.Instance);
+
+        var runTask = worker.StartAsync(cts.Token);
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (DateTime.UtcNow < deadline && source.Status != SourceStatus.Ready)
+        {
+            await Task.Delay(50);
+        }
+
+        cts.Cancel();
+        try { await runTask; } catch { }
+
+        Assert.Equal(SourceStatus.Ready, source.Status);
+        Assert.Equal(2, source.Chunks.Count);
+        Assert.Equal("New chunk 0", source.Chunks.First().Content);
+        Assert.Equal("New chunk 1", source.Chunks.Last().Content);
+    }
+
+    [Fact]
     public async Task HttpAiClient_ParsesSuccessResponse()
     {
         var handler = new StubHttpMessageHandler(
@@ -207,6 +320,20 @@ public class SourceIngestionWorkerTests
 
         public Task<IReadOnlyList<Guid>> FindPendingOrProcessingIdsAsync(CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyList<Guid>>(_all.Where(s => s.Status == SourceStatus.Pending || s.Status == SourceStatus.Processing).Select(s => s.Id).ToList());
+
+        public Task SaveChunksAsync(Guid sourceId, IReadOnlyList<SourceChunk> chunks, CancellationToken cancellationToken)
+        {
+            var s = _all.FirstOrDefault(s => s.Id == sourceId);
+            if (s is not null)
+            {
+                s.Chunks.Clear();
+                foreach (var chunk in chunks)
+                {
+                    s.Chunks.Add(chunk);
+                }
+            }
+            return Task.CompletedTask;
+        }
 
         public Task AddAsync(Source source, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task UpdateAsync(Source source, CancellationToken cancellationToken) => Task.CompletedTask;

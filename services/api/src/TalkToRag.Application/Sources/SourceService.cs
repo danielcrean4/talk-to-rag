@@ -43,7 +43,7 @@ public sealed class SourceService(
             throw new RequestValidationException("File exceeds 50 MB limit.");
         }
 
-        var sourceId = Guid.NewGuid();
+        var sourceId = Guid.CreateVersion7();
         var blobKey = $"sources/{sourceId:N}{extension.ToLowerInvariant()}";
 
         await blobStorage.WriteAsync(blobKey, stream, cancellationToken);

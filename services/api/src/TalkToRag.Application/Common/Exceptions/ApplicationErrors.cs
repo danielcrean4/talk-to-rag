@@ -14,3 +14,6 @@ public sealed class NotFoundException(string message) : Exception(message);
 
 /// <summary>The AI service rejected the document (e.g. scanned PDF without OCR) (HTTP 422).</summary>
 public sealed class AiIngestionException(string message) : Exception(message);
+
+/// <summary>The AI service or underlying model server is unavailable (HTTP 503).</summary>
+public sealed class AiServiceUnavailableException(string message) : Exception(message);

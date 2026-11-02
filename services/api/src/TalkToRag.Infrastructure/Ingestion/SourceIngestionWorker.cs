@@ -75,31 +75,43 @@ public sealed class SourceIngestionWorker(
             var request = new IngestSourceRequest(source.Id, source.BlobKey, source.ContentType);
             var response = await aiClient.IngestSourceAsync(request, cancellationToken);
 
-            source.Chunks.Clear();
-            foreach (var chunk in response.Chunks)
+            var chunks = response.Chunks.Select(chunk => new SourceChunk
             {
-                source.Chunks.Add(new SourceChunk
-                {
-                    Id = Guid.NewGuid(),
-                    SourceId = source.Id,
-                    PageNumber = chunk.PageNumber,
-                    Section = chunk.Section,
-                    ChunkIndex = chunk.ChunkIndex,
-                    Content = chunk.Content,
-                    Embedding = chunk.Embedding
-                });
-            }
+                Id = Guid.CreateVersion7(),
+                SourceId = source.Id,
+                PageNumber = chunk.PageNumber,
+                Section = chunk.Section,
+                ChunkIndex = chunk.ChunkIndex,
+                Content = chunk.Content,
+                Embedding = chunk.Embedding
+            }).ToList();
+
+            await repo.SaveChunksAsync(source.Id, chunks, cancellationToken);
 
             source.Status = SourceStatus.Ready;
             source.FailureReason = null;
             await repo.UpdateAsync(source, cancellationToken);
-            logger.LogInformation("Successfully ingested source {SourceId} into {ChunkCount} chunks", source.Id, source.Chunks.Count);
+            logger.LogInformation("Successfully ingested source {SourceId} into {ChunkCount} chunks", source.Id, chunks.Count);
         }
         catch (AiIngestionException ex)
         {
             logger.LogWarning(ex, "Source {SourceId} rejected by AI service: {Reason}", source.Id, ex.Message);
             source.Status = SourceStatus.Failed;
             source.FailureReason = ex.Message;
+            await repo.UpdateAsync(source, CancellationToken.None);
+        }
+        catch (AiServiceUnavailableException ex)
+        {
+            logger.LogWarning(ex, "Source {SourceId} deferred: AI service unavailable ({Reason})", source.Id, ex.Message);
+            source.Status = SourceStatus.Failed;
+            source.FailureReason = $"Embedding service unavailable: {ex.Message}";
+            await repo.UpdateAsync(source, CancellationToken.None);
+        }
+        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            logger.LogError(ex, "AI service timed out while ingesting source {SourceId}", source.Id);
+            source.Status = SourceStatus.Failed;
+            source.FailureReason = "Ingestion timed out while communicating with AI service.";
             await repo.UpdateAsync(source, CancellationToken.None);
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)

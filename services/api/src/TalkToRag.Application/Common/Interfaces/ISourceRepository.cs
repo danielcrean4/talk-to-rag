@@ -9,6 +9,7 @@ public interface ISourceRepository
     Task<Source?> FindByIdAsync(Guid id, CancellationToken cancellationToken);
     Task<IReadOnlyList<SourceDto>> ListForUserAsync(Guid userId, CancellationToken cancellationToken);
     Task<IReadOnlyList<Guid>> FindPendingOrProcessingIdsAsync(CancellationToken cancellationToken);
+    Task SaveChunksAsync(Guid sourceId, IReadOnlyList<SourceChunk> chunks, CancellationToken cancellationToken);
     Task AddAsync(Source source, CancellationToken cancellationToken);
     Task UpdateAsync(Source source, CancellationToken cancellationToken);
 }
