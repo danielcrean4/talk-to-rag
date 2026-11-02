@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using TalkToRag.Application.Common.Interfaces;
 using TalkToRag.Infrastructure.Persistence;
 using TalkToRag.Infrastructure.Security;
+using TalkToRag.Infrastructure.Storage;
 
 namespace TalkToRag.Infrastructure;
 
@@ -18,6 +19,9 @@ public static class DependencyInjection
             .UseNpgsql(connectionString, npgsql => npgsql.UseVector())
             .UseSnakeCaseNamingConvention());
         services.AddScoped<IUserRepository, UserRepository>();
+
+        var blobRoot = configuration["BlobStorage:Root"] ?? "/var/talk-to-rag/blobs";
+        services.AddSingleton<IBlobStorage>(new LocalBlobStorage(blobRoot));
 
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.Section));
         services.AddSingleton<ITokenGenerator, JwtTokenGenerator>();

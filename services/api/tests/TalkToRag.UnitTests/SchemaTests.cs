@@ -24,6 +24,7 @@ public class SchemaTests
     [InlineData("USING hnsw (embedding vector_cosine_ops)")]
     [InlineData("search_vector tsvector GENERATED ALWAYS AS (to_tsvector('english', content)) STORED")]
     [InlineData("USING gin (search_vector)")]
+    [InlineData("section text")]
     public void Schema_SupportsHybridSearch(string expected) => Assert.Contains(expected, Sql);
 
     [Theory]
