@@ -349,6 +349,7 @@ erDiagram
         uuid id PK
         uuid source_id FK
         int page_number
+        text section "Nullable header breadcrumb (e.g. RL > TD Methods)"
         int chunk_index
         text content
         tsvector search_vector "Generated FTS GIN index"

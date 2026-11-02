@@ -42,6 +42,7 @@ options = { temperature = 0.2 }
 provider = "ollama"
 kind = "embed"
 name = "nomic-embed-text"
+options = { document_prefix = "search_document: ", query_prefix = "search_query: " }
 
 [models.fake-chat]
 provider = "offline"

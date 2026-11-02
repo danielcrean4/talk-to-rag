@@ -12,6 +12,7 @@ public class SourceChunk
     public Guid Id { get; set; }
     public Guid SourceId { get; set; }
     public int PageNumber { get; set; }
+    public string? Section { get; set; }
     public int ChunkIndex { get; set; }
     public required string Content { get; set; }
     public required float[] Embedding { get; set; }

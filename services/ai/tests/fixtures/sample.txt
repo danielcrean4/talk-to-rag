@@ -1,0 +1,1 @@
+Dynamic programming methods require a complete and accurate model of the environment. In contrast, Monte Carlo methods require only experience—sample sequences of states, actions, and rewards from actual or simulated interaction with an environment.

@@ -59,7 +59,9 @@ def test_factory_builds_objects_that_satisfy_the_contracts():
 
     assert isinstance(chat, ChatModel) and isinstance(embed, Embedder)
     assert chat.complete([Message("user", "hi")]) == "(fake reply to: hi)"
-    assert embed.embed(["a", "b"]) == embed.embed(["a", "b"])
+    assert embed.embed_documents(["a", "b"]) == embed.embed_documents(["a", "b"])
+    assert embed.embed_query("a") == embed.embed_query("a")
+    assert isinstance(embed.embed_query("a"), list)
 
 
 def test_model_choice_is_argument_then_environment_then_default(monkeypatch):
@@ -92,15 +94,14 @@ def test_invalid_config_is_rejected(overrides, message):
 
 
 def test_openai_compatible_adapter_maps_requests_and_responses():
-    calls = {}
+    calls = []
 
     def create_chat(**kwargs):
-        calls["chat"] = kwargs
         return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="pong"))])
 
     def create_embeddings(**kwargs):
-        calls["embed"] = kwargs
-        return SimpleNamespace(data=[SimpleNamespace(embedding=[0.1, 0.2])])
+        calls.append(kwargs)
+        return SimpleNamespace(data=[SimpleNamespace(embedding=[0.1, 0.2]) for _ in kwargs.get("input", [])])
 
     client = SimpleNamespace(
         chat=SimpleNamespace(completions=SimpleNamespace(create=create_chat)),
@@ -108,11 +109,27 @@ def test_openai_compatible_adapter_maps_requests_and_responses():
     )
 
     reply = OpenAICompatibleChat(client, "m", {"temperature": 0}).complete([Message("user", "ping")])
-    vectors = OpenAICompatibleEmbedder(client, "e", {}).embed(["text"])
+    adapter = OpenAICompatibleEmbedder(
+        client, "e", {"document_prefix": "doc: ", "query_prefix": "query: ", "user": "test-user"}
+    )
+    doc_vectors = adapter.embed_documents(["text1", "text2"])
+    query_vector = adapter.embed_query("question")
 
     assert reply == "pong"
-    assert calls["chat"] == {"model": "m", "messages": [{"role": "user", "content": "ping"}], "temperature": 0}
-    assert vectors == [[0.1, 0.2]] and calls["embed"] == {"model": "e", "input": ["text"]}
+    assert doc_vectors == [[0.1, 0.2], [0.1, 0.2]]
+    assert calls[0] == {"model": "e", "input": ["doc: text1", "doc: text2"], "user": "test-user"}
+    assert query_vector == [0.1, 0.2]
+    assert calls[1] == {"model": "e", "input": ["query: question"], "user": "test-user"}
+
+
+def test_fake_embedder_supports_prefixes():
+    from talk_to_rag.llm.adapters.fake import FakeEmbedder
+
+    raw = FakeEmbedder(dimensions=4)
+    prefixed = FakeEmbedder(dimensions=4, document_prefix="doc: ", query_prefix="q: ")
+
+    assert prefixed.embed_documents(["hello"]) == [raw.embed_documents(["doc: hello"])[0]]
+    assert prefixed.embed_query("hello") == raw.embed_query("q: hello")
 
 
 def test_base_url_can_be_overridden_from_the_environment(monkeypatch):

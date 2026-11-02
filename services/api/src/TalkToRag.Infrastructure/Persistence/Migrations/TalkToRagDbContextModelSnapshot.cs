@@ -302,6 +302,10 @@ namespace TalkToRag.Infrastructure.Persistence.Migrations
                         .HasColumnName("search_vector")
                         .HasComputedColumnSql("to_tsvector('english', content)", true);
 
+                    b.Property<string>("Section")
+                        .HasColumnType("text")
+                        .HasColumnName("section");
+
                     b.Property<Guid>("SourceId")
                         .HasColumnType("uuid")
                         .HasColumnName("source_id");

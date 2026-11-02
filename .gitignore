@@ -9,6 +9,7 @@ sources.local.yaml
 data/
 library/
 *.pdf
+!services/ai/tests/fixtures/*.pdf
 *.epub
 
 # Terraform
