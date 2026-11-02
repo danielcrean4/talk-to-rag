@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 
 from talk_to_rag.api.schemas import IngestedChunk, IngestSourceRequest, IngestSourceResponse
 from talk_to_rag.ingestion import IngestionError, default_chunker, parser_for
-from talk_to_rag.llm import embedder
+from talk_to_rag.llm import ModelError, embedder
 from talk_to_rag.storage import StorageError, blob_storage
 
 router = APIRouter(prefix="/v1/sources", tags=["ingestion"])
@@ -39,7 +39,10 @@ def ingest_source(request: IngestSourceRequest) -> IngestSourceResponse:
 
     for i in range(0, len(contents), _BATCH_SIZE):
         batch = contents[i : i + _BATCH_SIZE]
-        batch_embeddings = emb.embed_documents(batch)
+        try:
+            batch_embeddings = emb.embed_documents(batch)
+        except ModelError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
         embeddings.extend(batch_embeddings)
 
     ingested = [

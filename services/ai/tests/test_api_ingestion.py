@@ -134,6 +134,38 @@ def test_ingest_source_unsupported_content_type_returns_422(tmp_path, monkeypatc
     assert "Unsupported content type" in response.json()["detail"]
 
 
+def test_ingest_source_model_error_returns_503(tmp_path, monkeypatch):
+    from talk_to_rag.llm import ModelError
+
+    monkeypatch.setenv("TALK_TO_RAG_BLOB_ROOT", str(tmp_path))
+
+    class BrokenEmbedder:
+        def embed_documents(self, texts: list[str]) -> list[list[float]]:
+            raise ModelError("Ollama connection refused at http://localhost:11434")
+
+        def embed_query(self, text: str) -> list[float]:
+            raise ModelError("Ollama connection refused at http://localhost:11434")
+
+    monkeypatch.setattr("talk_to_rag.api.routes.ingestion.embedder", lambda: BrokenEmbedder())
+
+    source_id = str(uuid.uuid4())
+    blob_key = f"sources/{source_id}.txt"
+    blob_storage().write_bytes(blob_key, b"Some good text content to ingest.")
+
+    client = TestClient(create_app())
+    response = client.post(
+        "/v1/sources/ingest",
+        json={
+            "source_id": source_id,
+            "blob_key": blob_key,
+            "content_type": "text/plain",
+        },
+    )
+
+    assert response.status_code == 503
+    assert "Ollama connection refused" in response.json()["detail"]
+
+
 def test_ingestion_is_in_openapi_contract():
     paths = TestClient(create_app()).get("/openapi.json").json()["paths"]
     assert "/v1/sources/ingest" in paths
