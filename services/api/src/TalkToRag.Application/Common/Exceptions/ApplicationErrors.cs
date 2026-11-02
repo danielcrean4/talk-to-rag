@@ -11,3 +11,6 @@ public sealed class AuthenticationFailedException() : Exception("Email or passwo
 
 /// <summary>The thing asked for does not exist, or is not the caller's (HTTP 404).</summary>
 public sealed class NotFoundException(string message) : Exception(message);
+
+/// <summary>The AI service rejected the document (e.g. scanned PDF without OCR) (HTTP 422).</summary>
+public sealed class AiIngestionException(string message) : Exception(message);

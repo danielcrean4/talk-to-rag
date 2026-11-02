@@ -34,6 +34,8 @@ Versions are the ones locked or pinned when the entry was written; `services/ai/
 | [.NET](https://github.com/dotnet/runtime) and [ASP.NET Core](https://github.com/dotnet/aspnetcore) (`mcr.microsoft.com/dotnet/aspnet:10.0` image) | 10.0 | MIT; image base is Debian | Runtime, web API | © .NET Foundation and contributors |
 | Microsoft.AspNetCore.OpenApi | 10.0.14 | MIT | `/openapi/v1.json` | © .NET Foundation and contributors |
 | Microsoft.AspNetCore.Authentication.JwtBearer | 10.0.14 | MIT | Validating sign-in tokens | © .NET Foundation and contributors |
+| Microsoft.Extensions.Hosting.Abstractions | 10.0.14 | MIT | `BackgroundService` for background source ingestion worker | © .NET Foundation and contributors |
+| Microsoft.Extensions.Http | 10.0.14 | MIT | `AddHttpClient` for typed AI HTTP client | © .NET Foundation and contributors |
 | Microsoft.Extensions.Identity.Core | 10.0.14 | MIT | `PasswordHasher<User>` (PBKDF2) | © .NET Foundation and contributors |
 | Microsoft.Extensions.Options.ConfigurationExtensions | 10.0.14 | MIT | Binding `JwtOptions` | © .NET Foundation and contributors |
 | [Microsoft.IdentityModel.JsonWebTokens](https://github.com/AzureAD/azure-activedirectory-identitymodel-extensions-for-dotnet) | 8.23.0 | MIT | Creating signed JWTs | © Microsoft Corporation |
