@@ -30,6 +30,10 @@ class ChatModel(Protocol):
 
 @runtime_checkable
 class Embedder(Protocol):
-    def embed(self, texts: Sequence[str]) -> list[list[float]]:
-        """Return one vector per input text, in the same order."""
+    def embed_documents(self, texts: Sequence[str]) -> list[list[float]]:
+        """Return one vector per input document text, in the same order."""
+        ...
+
+    def embed_query(self, text: str) -> list[float]:
+        """Return the vector for a search query text."""
         ...

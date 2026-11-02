@@ -14,12 +14,22 @@ class FakeChat:
 
 
 class FakeEmbedder:
-    def __init__(self, dimensions: int = 8):
+    def __init__(
+        self,
+        dimensions: int = 8,
+        document_prefix: str = "",
+        query_prefix: str = "",
+    ):
         self._dimensions = dimensions
+        self._document_prefix = document_prefix
+        self._query_prefix = query_prefix
 
-    def embed(self, texts: Sequence[str]) -> list[list[float]]:
+    def embed_documents(self, texts: Sequence[str]) -> list[list[float]]:
         # Deterministic: the same text always gets the same vector.
-        return [self._vector(text) for text in texts]
+        return [self._vector(f"{self._document_prefix}{text}") for text in texts]
+
+    def embed_query(self, text: str) -> list[float]:
+        return self._vector(f"{self._query_prefix}{text}")
 
     def _vector(self, text: str) -> list[float]:
         digest = hashlib.sha256(text.encode()).digest()
@@ -31,4 +41,9 @@ def build_chat(provider: Mapping[str, Any], model: Mapping[str, Any]) -> FakeCha
 
 
 def build_embedder(provider: Mapping[str, Any], model: Mapping[str, Any]) -> FakeEmbedder:
-    return FakeEmbedder(model.get("options", {}).get("dimensions", 8))
+    options = model.get("options", {})
+    return FakeEmbedder(
+        dimensions=options.get("dimensions", 8),
+        document_prefix=options.get("document_prefix", ""),
+        query_prefix=options.get("query_prefix", ""),
+    )

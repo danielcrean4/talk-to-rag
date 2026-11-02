@@ -35,8 +35,21 @@ class OpenAICompatibleEmbedder:
         self._client = client
         self._model = model
         self._options = dict(options)
+        self._document_prefix = str(self._options.pop("document_prefix", ""))
+        self._query_prefix = str(self._options.pop("query_prefix", ""))
 
-    def embed(self, texts: Sequence[str]) -> list[list[float]]:
+    def embed_documents(self, texts: Sequence[str]) -> list[list[float]]:
+        prefixed = [f"{self._document_prefix}{text}" for text in texts]
+        return self._embed(prefixed)
+
+    def embed_query(self, text: str) -> list[float]:
+        prefixed = [f"{self._query_prefix}{text}"]
+        vectors = self._embed(prefixed)
+        return vectors[0]
+
+    def _embed(self, texts: Sequence[str]) -> list[list[float]]:
+        if not texts:
+            return []
         with _as_model_error(self._model):
             response = self._client.embeddings.create(
                 model=self._model, input=list(texts), **self._options
