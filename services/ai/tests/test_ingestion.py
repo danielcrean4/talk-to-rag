@@ -65,6 +65,41 @@ def test_markdown_parser_tracks_heading_breadcrumbs():
     assert "bootstrap" in pages[2].text
 
 
+def test_markdown_parser_ignores_headings_inside_code_fences():
+    md = b"""# Main Title
+
+Some explanation before code.
+
+```python
+# this is a python comment, not a heading
+def calculate_td_error():
+    ## also not a heading
+    return 42
+```
+
+## Next Section
+
+~~~typescript
+// comment
+### not a section either
+const x = 10;
+~~~
+
+Content in next section.
+"""
+    parser = MarkdownSourceParser()
+    pages = parser.parse(md)
+
+    assert len(pages) == 2
+    assert pages[0].section == "Main Title"
+    assert "def calculate_td_error():" in pages[0].text
+    assert "# this is a python comment" in pages[0].text
+
+    assert pages[1].section == "Main Title > Next Section"
+    assert "const x = 10;" in pages[1].text
+    assert "### not a section either" in pages[1].text
+
+
 def test_markdown_parser_handles_document_without_headings():
     parser = MarkdownSourceParser()
     pages = parser.parse(b"Just simple markdown text without any headings.")

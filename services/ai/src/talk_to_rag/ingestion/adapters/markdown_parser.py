@@ -5,6 +5,7 @@ import re
 from talk_to_rag.ingestion.contracts import IngestionError, ParsedPage
 
 _HEADING_PATTERN = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$")
+_FENCE_START_PATTERN = re.compile(r"^\s*(`{3,}|~{3,})")
 
 
 class MarkdownSourceParser:
@@ -23,6 +24,9 @@ class MarkdownSourceParser:
         pages: list[ParsedPage] = []
         heading_stack: list[str] = []
         current_lines: list[str] = []
+        in_fence = False
+        fence_char = ""
+        fence_len = 0
 
         def current_section() -> str | None:
             return " > ".join(heading_stack) if heading_stack else None
@@ -40,17 +44,34 @@ class MarkdownSourceParser:
             current_lines.clear()
 
         for line in lines:
-            match = _HEADING_PATTERN.match(line)
-            if match:
-                flush_section()
-                level = len(match.group(1))
-                title = match.group(2).strip()
+            if not in_fence:
+                fence_match = _FENCE_START_PATTERN.match(line)
+                if fence_match:
+                    in_fence = True
+                    matched_fence = fence_match.group(1)
+                    fence_char = matched_fence[0]
+                    fence_len = len(matched_fence)
+                    current_lines.append(line)
+                    continue
 
-                # Adjust heading stack depth
-                if level <= len(heading_stack):
-                    heading_stack = heading_stack[: level - 1]
-                heading_stack.append(title)
+                match = _HEADING_PATTERN.match(line)
+                if match:
+                    flush_section()
+                    level = len(match.group(1))
+                    title = match.group(2).strip()
+
+                    # Adjust heading stack depth
+                    if level <= len(heading_stack):
+                        heading_stack = heading_stack[: level - 1]
+                    heading_stack.append(title)
+                else:
+                    current_lines.append(line)
             else:
+                stripped = line.strip()
+                if stripped.startswith(fence_char * fence_len) and all(c == fence_char for c in stripped):
+                    in_fence = False
+                    fence_char = ""
+                    fence_len = 0
                 current_lines.append(line)
 
         flush_section()
