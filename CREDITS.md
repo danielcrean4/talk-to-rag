@@ -23,6 +23,7 @@ Versions are the ones locked or pinned when the entry was written; `services/ai/
 | [Pydantic](https://github.com/pydantic/pydantic) (via FastAPI) | 2.14.2 | MIT | Request/response schemas | © Pydantic Services Inc. and contributors |
 | [Uvicorn](https://github.com/encode/uvicorn) | 0.54.0 | BSD-3-Clause | ASGI server | © Encode OSS Ltd. |
 | [OpenAI Python library](https://github.com/openai/openai-python) | 3.41.0 | Apache-2.0 | Client for any OpenAI-compatible server (Ollama) in `llm/adapters/openai_compatible.py` | © OpenAI |
+| [pypdf](https://github.com/py-pdf/pypdf) | 6.21.4 | BSD-3-Clause | Page-by-page PDF text extraction in `ingestion/adapters/pypdf_parser.py` | © Mathieu Fenniak and contributors |
 | [uv](https://github.com/astral-sh/uv) (copied into the image) | 0.13.6 | MIT or Apache-2.0 | Installs dependencies at build time | © Astral Software Inc. |
 | [Hatchling](https://github.com/pypa/hatch) | build backend | MIT | Builds the `talk-to-rag` package | © the Hatch contributors |
 
@@ -71,4 +72,4 @@ Weights are downloaded by each user with `ollama pull`; talk-to-rag does not red
 
 - **AI-assisted code and docs.** Written with Claude Code (Anthropic, model Claude Opus 5.5) between 2026-10-30 and 2026-11-01, directed by Dan in conversation; every such commit carries a `Co-Authored-By: Claude Opus 5.5` trailer. `docs/architecture.md` was drafted in a separate AI-assisted planning session, in either Google Antigravity (Gemini) or Claude (claude.ai chat); which one, and the model, wasn't recorded at the time. Later edits were made with Claude Code.
 - **UI prototype (outside the repo).** A clickable mockup made as a Claude artifact uses the [Inter](https://github.com/rsms/inter) and [IBM Plex Mono](https://github.com/IBM/plex) fonts (both SIL Open Font License 1.1, via Google Fonts). Credit them again if they reach the Angular app.
-- **Sample text.** Passages used in tests and demos (TD learning, Monte Carlo, banjo tuning) were written for this project, not quoted from a book.
+- **Sample text and test fixtures.** Passages and files used in tests and demos (TD learning, Monte Carlo, banjo tuning, and `services/ai/tests/fixtures/*.pdf/md/txt`) were created for this project, not quoted from a book.
