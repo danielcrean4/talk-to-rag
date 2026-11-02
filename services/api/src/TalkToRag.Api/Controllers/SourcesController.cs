@@ -11,6 +11,8 @@ namespace TalkToRag.Api.Controllers;
 public sealed class SourcesController(ISourceService sourceService) : ControllerBase
 {
     [HttpPost]
+    [RequestSizeLimit(60 * 1024 * 1024)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 60 * 1024 * 1024)]
     [ProducesResponseType<CreateSourceResponse>(StatusCodes.Status202Accepted)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
