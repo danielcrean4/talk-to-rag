@@ -97,15 +97,6 @@ public sealed class SourceService(
             throw new NotFoundException($"Source '{id}' not found.");
         }
 
-        return new SourceDto(
-            source.Id,
-            source.Title,
-            source.FileName,
-            source.ContentType,
-            source.SizeBytes,
-            source.Status.ToString(),
-            source.FailureReason,
-            source.Chunks.Count,
-            source.CreatedAtUtc);
+        return source;
     }
 }

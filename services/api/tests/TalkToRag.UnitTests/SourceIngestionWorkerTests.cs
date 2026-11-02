@@ -191,8 +191,13 @@ public class SourceIngestionWorkerTests
     {
         private readonly List<Source> _all = [.. sources];
 
-        public Task<Source?> FindByIdForUserAsync(Guid id, Guid userId, CancellationToken cancellationToken) =>
-            Task.FromResult(_all.FirstOrDefault(s => s.Id == id && s.UserId == userId));
+        public Task<SourceDto?> FindByIdForUserAsync(Guid id, Guid userId, CancellationToken cancellationToken)
+        {
+            var s = _all.FirstOrDefault(s => s.Id == id && s.UserId == userId);
+            if (s is null) return Task.FromResult<SourceDto?>(null);
+            return Task.FromResult<SourceDto?>(new SourceDto(
+                s.Id, s.Title, s.FileName, s.ContentType, s.SizeBytes, s.Status.ToString(), s.FailureReason, s.Chunks.Count, s.CreatedAtUtc));
+        }
 
         public Task<Source?> FindByIdAsync(Guid id, CancellationToken cancellationToken) =>
             Task.FromResult(_all.FirstOrDefault(s => s.Id == id));

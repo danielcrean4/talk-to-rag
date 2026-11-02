@@ -8,14 +8,23 @@ namespace TalkToRag.Infrastructure.Persistence;
 
 public sealed class SourceRepository(TalkToRagDbContext db) : ISourceRepository
 {
-    public Task<Source?> FindByIdForUserAsync(Guid id, Guid userId, CancellationToken cancellationToken) =>
+    public Task<SourceDto?> FindByIdForUserAsync(Guid id, Guid userId, CancellationToken cancellationToken) =>
         db.Sources
-            .Include(s => s.Chunks)
-            .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId, cancellationToken);
+            .Where(s => s.Id == id && s.UserId == userId)
+            .Select(s => new SourceDto(
+                s.Id,
+                s.Title,
+                s.FileName,
+                s.ContentType,
+                s.SizeBytes,
+                s.Status.ToString(),
+                s.FailureReason,
+                s.Chunks.Count,
+                s.CreatedAtUtc))
+            .FirstOrDefaultAsync(cancellationToken);
 
     public Task<Source?> FindByIdAsync(Guid id, CancellationToken cancellationToken) =>
         db.Sources
-            .Include(s => s.Chunks)
             .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
 
     public async Task<IReadOnlyList<SourceDto>> ListForUserAsync(Guid userId, CancellationToken cancellationToken)

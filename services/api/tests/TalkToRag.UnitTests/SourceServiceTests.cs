@@ -92,7 +92,7 @@ public class SourceServiceTests
     {
         var service = CreateService();
         var sourceId = Guid.NewGuid();
-        _repository.All.Add(new Source
+        var source = new Source
         {
             Id = sourceId,
             UserId = _currentUser.UserId,
@@ -103,13 +103,16 @@ public class SourceServiceTests
             BlobKey = "sources/td.pdf",
             Status = SourceStatus.Ready,
             CreatedAtUtc = _clock.GetUtcNow()
-        });
+        };
+        source.Chunks.Add(new SourceChunk { Id = Guid.NewGuid(), SourceId = sourceId, Content = "abc", Embedding = [0.1f] });
+        _repository.All.Add(source);
 
         var result = await service.GetByIdAsync(sourceId, default);
 
         Assert.Equal(sourceId, result.Id);
         Assert.Equal("TD Learning", result.Title);
         Assert.Equal("Ready", result.Status);
+        Assert.Equal(1, result.ChunkCount);
     }
 
     [Fact]
@@ -182,8 +185,21 @@ public class SourceServiceTests
     {
         public List<Source> All { get; } = [];
 
-        public Task<Source?> FindByIdForUserAsync(Guid id, Guid userId, CancellationToken cancellationToken) =>
-            Task.FromResult(All.FirstOrDefault(s => s.Id == id && s.UserId == userId));
+        public Task<SourceDto?> FindByIdForUserAsync(Guid id, Guid userId, CancellationToken cancellationToken)
+        {
+            var s = All.FirstOrDefault(s => s.Id == id && s.UserId == userId);
+            if (s is null) return Task.FromResult<SourceDto?>(null);
+            return Task.FromResult<SourceDto?>(new SourceDto(
+                s.Id,
+                s.Title,
+                s.FileName,
+                s.ContentType,
+                s.SizeBytes,
+                s.Status.ToString(),
+                s.FailureReason,
+                s.Chunks.Count,
+                s.CreatedAtUtc));
+        }
 
         public Task<Source?> FindByIdAsync(Guid id, CancellationToken cancellationToken) =>
             Task.FromResult(All.FirstOrDefault(s => s.Id == id));
