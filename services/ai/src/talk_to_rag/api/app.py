@@ -5,7 +5,7 @@
 
 from fastapi import FastAPI
 
-from talk_to_rag.api.routes import health
+from talk_to_rag.api.routes import health, ingestion
 
 
 def create_app() -> FastAPI:
@@ -14,4 +14,5 @@ def create_app() -> FastAPI:
         summary="Stateless model work for the .NET API: ingestion, retrieval helpers and speech.",
     )
     app.include_router(health.router)
+    app.include_router(ingestion.router)
     return app
