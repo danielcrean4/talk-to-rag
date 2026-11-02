@@ -31,7 +31,7 @@ public class SourceIngestionWorkerTests
 
         var repo = new FakeSourceRepo([source]);
         var fakeAi = new FakeAiClient(new IngestSourceResponse([
-            new IngestedChunkDto(1, null, 0, "TD learning content", [0.1f, 0.2f])
+            new IngestedChunkDto(1, "1", null, 0, "TD learning content", [0.1f, 0.2f])
         ]));
         var queue = new ChannelSourceIngestionQueue();
         await queue.EnqueueAsync(sourceId);
@@ -240,8 +240,8 @@ public class SourceIngestionWorkerTests
 
         var repo = new FakeSourceRepo([source]);
         var fakeAi = new FakeAiClient(new IngestSourceResponse([
-            new IngestedChunkDto(1, null, 0, "New chunk 0", [0.1f, 0.2f]),
-            new IngestedChunkDto(1, null, 1, "New chunk 1", [0.3f, 0.4f])
+            new IngestedChunkDto(1, null, null, 0, "New chunk 0", [0.1f, 0.2f]),
+            new IngestedChunkDto(1, null, null, 1, "New chunk 1", [0.3f, 0.4f])
         ]));
         var queue = new ChannelSourceIngestionQueue();
         await queue.EnqueueAsync(sourceId);
@@ -288,7 +288,7 @@ public class SourceIngestionWorkerTests
 
         var repo = new CrashingOnFirstFindRepo([successSource], failedId);
         var fakeAi = new FakeAiClient(new IngestSourceResponse([
-            new IngestedChunkDto(1, null, 0, "Content", [0.1f])
+            new IngestedChunkDto(1, null, null, 0, "Content", [0.1f])
         ]));
         var queue = new ChannelSourceIngestionQueue();
         await queue.EnqueueAsync(failedId);
@@ -326,6 +326,7 @@ public class SourceIngestionWorkerTests
               "chunks": [
                 {
                   "page_number": 3,
+                  "page_label": "iii",
                   "section": "Heading 1 > Subheading",
                   "chunk_index": 0,
                   "content": "some chunk content",
@@ -340,6 +341,7 @@ public class SourceIngestionWorkerTests
 
         var chunk = Assert.Single(response.Chunks);
         Assert.Equal(3, chunk.PageNumber);
+        Assert.Equal("iii", chunk.PageLabel);
         Assert.Equal("Heading 1 > Subheading", chunk.Section);
         Assert.Equal(0, chunk.ChunkIndex);
         Assert.Equal("some chunk content", chunk.Content);

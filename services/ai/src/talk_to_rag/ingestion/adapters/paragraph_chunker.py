@@ -37,6 +37,7 @@ class ParagraphChunker:
                 chunks.append(
                     ChunkPayload(
                         page_number=page.page_number,
+                        page_label=page.page_label,
                         section=page.section,
                         chunk_index=chunk_index,
                         content=content,

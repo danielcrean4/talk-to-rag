@@ -47,6 +47,25 @@ def test_pypdf_parser_rejects_empty_or_corrupt_bytes():
         parser.parse(b"not a valid pdf content at all")
 
 
+def test_pypdf_parser_rejoins_hyphenated_linebreaks_and_captures_page_labels(monkeypatch):
+    class StubPage:
+        def extract_text(self):
+            return "boot-\nstrapping and value func-\ntion approximation"
+
+    class StubReader:
+        pages = [StubPage()]
+        page_labels = ["120"]
+        is_encrypted = False
+
+    monkeypatch.setattr("talk_to_rag.ingestion.adapters.pypdf_parser.PdfReader", lambda _: StubReader())
+
+    parser = PyPdfSourceParser()
+    pages = parser.parse(b"dummy pdf bytes")
+    assert len(pages) == 1
+    assert "bootstrapping and value function approximation" in pages[0].text
+    assert pages[0].page_label == "120"
+
+
 def test_markdown_parser_tracks_heading_breadcrumbs():
     md_bytes = (FIXTURES_DIR / "sample.md").read_bytes()
     parser = MarkdownSourceParser()

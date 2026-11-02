@@ -48,6 +48,7 @@ def ingest_source(request: IngestSourceRequest) -> IngestSourceResponse:
     ingested = [
         IngestedChunk(
             page_number=chunk.page_number,
+            page_label=chunk.page_label,
             section=chunk.section,
             chunk_index=chunk.chunk_index,
             content=chunk.content,

@@ -7,6 +7,7 @@ public sealed record IngestSourceRequest(
 
 public sealed record IngestedChunkDto(
     int PageNumber,
+    string? PageLabel,
     string? Section,
     int ChunkIndex,
     string Content,

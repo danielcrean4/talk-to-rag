@@ -20,6 +20,7 @@ class IngestSourceRequest(BaseModel):
 
 class IngestedChunk(BaseModel):
     page_number: int
+    page_label: str | None = None
     section: str | None = None
     chunk_index: int
     content: str

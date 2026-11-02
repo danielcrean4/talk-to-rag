@@ -1,6 +1,7 @@
 """PDF parser adapter using pypdf to extract page-by-page text."""
 
 import io
+import re
 from pypdf import PdfReader
 from pypdf.errors import PyPdfError
 
@@ -16,8 +17,23 @@ class PyPdfSourceParser:
 
         try:
             reader = PdfReader(io.BytesIO(content))
-        except (PyPdfError, Exception) as exc:
+            if reader.is_encrypted:
+                raise IngestionError("PDF is password-protected or encrypted.")
+        except IngestionError:
+            raise
+        except (PyPdfError, ValueError) as exc:
             raise IngestionError(f"Corrupt or invalid PDF: {exc}") from exc
+        except Exception as exc:
+            # Broad fallback for unexpected parser crashes on malformed PDF streams
+            raise IngestionError(f"Failed to read PDF structure: {exc}") from exc
+
+        page_labels: list[str] = []
+        try:
+            raw_labels = getattr(reader, "page_labels", None)
+            if raw_labels:
+                page_labels = [str(lbl) for lbl in raw_labels]
+        except Exception:
+            page_labels = []
 
         pages: list[ParsedPage] = []
         for index, page in enumerate(reader.pages):
@@ -26,9 +42,19 @@ class PyPdfSourceParser:
             except Exception as exc:
                 raise IngestionError(f"Failed to extract text from page {index + 1}: {exc}") from exc
 
-            cleaned = text.strip()
+            # Rejoin words hyphenated across line ends ("boot-\nstrapping" -> "bootstrapping")
+            unhyphenated = re.sub(r"-\r?\n\s*([a-z])", r"\1", text)
+            cleaned = unhyphenated.strip()
             if cleaned:
-                pages.append(ParsedPage(page_number=index + 1, text=cleaned, section=None))
+                label = page_labels[index] if index < len(page_labels) else None
+                pages.append(
+                    ParsedPage(
+                        page_number=index + 1,
+                        text=cleaned,
+                        section=None,
+                        page_label=label,
+                    )
+                )
 
         if not pages:
             raise IngestionError("No text layer found. This looks like a scanned PDF and needs OCR.")

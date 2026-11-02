@@ -16,6 +16,7 @@ class ParsedPage:
     page_number: int
     text: str
     section: str | None = None
+    page_label: str | None = None
 
 
 @dataclass(frozen=True)
@@ -26,6 +27,7 @@ class ChunkPayload:
     section: str | None
     chunk_index: int
     content: str
+    page_label: str | None = None
 
 
 @runtime_checkable

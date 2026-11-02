@@ -91,6 +91,7 @@ public sealed class SourceIngestionWorker(
                 Id = Guid.CreateVersion7(),
                 SourceId = source.Id,
                 PageNumber = chunk.PageNumber,
+                PageLabel = chunk.PageLabel,
                 Section = chunk.Section,
                 ChunkIndex = chunk.ChunkIndex,
                 Content = chunk.Content,

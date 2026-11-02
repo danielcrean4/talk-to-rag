@@ -292,6 +292,10 @@ namespace TalkToRag.Infrastructure.Persistence.Migrations
                         .HasColumnType("vector(768)")
                         .HasColumnName("embedding");
 
+                    b.Property<string>("PageLabel")
+                        .HasColumnType("text")
+                        .HasColumnName("page_label");
+
                     b.Property<int>("PageNumber")
                         .HasColumnType("integer")
                         .HasColumnName("page_number");
