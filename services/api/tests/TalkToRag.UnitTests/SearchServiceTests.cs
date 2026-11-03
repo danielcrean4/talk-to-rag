@@ -76,6 +76,7 @@ public class SearchServiceTests
         Assert.Equal("Reinforcement Learning: An Introduction", group.Source.Title);
 
         var passage = Assert.Single(group.Passages);
+        Assert.Equal(1, passage.Number);
         Assert.Equal(chunkId, passage.ChunkId);
         Assert.Equal(120, passage.PageNumber);
         Assert.Equal("120", passage.PageLabel);
@@ -119,6 +120,57 @@ public class SearchServiceTests
         var group = Assert.Single(response.Groups);
         var passage = Assert.Single(group.Passages);
         Assert.Equal("Note containing <img src=x onerror=alert(1)> and <mark><b>bold</mark> text</b>.", passage.Snippet);
+    }
+
+    [Fact]
+    public async Task SearchAsync_InterleavedSourceHits_PreservesGlobalCitationNumbersAcrossGroups()
+    {
+        var service = CreateService();
+        var sourceA = Guid.NewGuid();
+        var sourceB = Guid.NewGuid();
+
+        var chunkA1 = Guid.NewGuid();
+        var chunkB1 = Guid.NewGuid();
+        var chunkA2 = Guid.NewGuid();
+
+        // 3 hits interleaved: Source A (rank 1), Source B (rank 2), Source A (rank 3)
+        _searchRepo.Hits = [
+            new SearchHit(chunkA1, sourceA, "Source A", "text/plain", 1, null, null, 0, "Content A1", null, 0.05, 0.1f, ["semantic"]),
+            new SearchHit(chunkB1, sourceB, "Source B", "text/plain", 1, null, null, 0, "Content B1", null, 0.04, 0.2f, ["semantic"]),
+            new SearchHit(chunkA2, sourceA, "Source A", "text/plain", 2, null, null, 1, "Content A2", null, 0.03, 0.3f, ["semantic"])
+        ];
+
+        var response = await service.SearchAsync(new SearchRequest("test"), default);
+
+        Assert.Equal(2, response.Groups.Count);
+
+        var groupA = response.Groups.Single(g => g.Source.Id == sourceA);
+        var groupB = response.Groups.Single(g => g.Source.Id == sourceB);
+
+        // Group A passages should preserve their global citation ranks: 1 and 3
+        Assert.Equal(2, groupA.Passages.Count);
+        Assert.Equal(1, groupA.Passages[0].Number);
+        Assert.Equal(chunkA1, groupA.Passages[0].ChunkId);
+        Assert.Equal(3, groupA.Passages[1].Number);
+        Assert.Equal(chunkA2, groupA.Passages[1].ChunkId);
+
+        // Group B passage should preserve its global citation rank: 2
+        var passageB = Assert.Single(groupB.Passages);
+        Assert.Equal(2, passageB.Number);
+        Assert.Equal(chunkB1, passageB.ChunkId);
+
+        // Conversation citations should match exactly 1, 2, 3 in global rank order
+        var conversation = await _conversationRepo.FindByIdForUserAsync(response.ConversationId, _currentUser.UserId, default);
+        Assert.NotNull(conversation);
+        var message = Assert.Single(conversation.Messages);
+        var orderedCitations = message.Citations.OrderBy(c => c.Number).ToList();
+        Assert.Equal(3, orderedCitations.Count);
+        Assert.Equal(1, orderedCitations[0].Number);
+        Assert.Equal(chunkA1, orderedCitations[0].SourceChunkId);
+        Assert.Equal(2, orderedCitations[1].Number);
+        Assert.Equal(chunkB1, orderedCitations[1].SourceChunkId);
+        Assert.Equal(3, orderedCitations[2].Number);
+        Assert.Equal(chunkA2, orderedCitations[2].SourceChunkId);
     }
 
     [Fact]

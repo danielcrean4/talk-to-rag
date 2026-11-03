@@ -16,6 +16,7 @@ public sealed record SourceSummaryDto(
     string ContentType);
 
 public sealed record PassageHitDto(
+    int Number,
     Guid ChunkId,
     int PageNumber,
     string? PageLabel,

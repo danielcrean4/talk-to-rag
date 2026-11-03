@@ -517,7 +517,6 @@
       return;
     }
 
-    let citationCounter = 1;
     results.groups.forEach(group => {
       const groupEl = document.createElement('div');
       groupEl.className = 'passage-group';
@@ -532,7 +531,7 @@
         </div>
         <div class="group-passages">
           ${group.passages.map(p => {
-            const citNum = citationCounter++;
+            const citNum = p.number;
             const pageBadge = p.pageLabel 
               ? `<span class="badge-page">Page ${escapeHtml(p.pageLabel)}</span>`
               : `<span class="badge-page">Page ${p.pageNumber}</span>`;

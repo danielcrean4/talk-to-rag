@@ -86,27 +86,30 @@ public sealed class SearchService(
                 Limit: limit),
             cancellationToken);
 
+        var numberedHits = searchHits.Select((hit, index) => (Hit: hit, Number: index + 1)).ToList();
+
         // Group hits by source
-        var groups = searchHits
-            .GroupBy(h => (h.SourceId, h.SourceTitle, h.SourceContentType))
+        var groups = numberedHits
+            .GroupBy(h => (h.Hit.SourceId, h.Hit.SourceTitle, h.Hit.SourceContentType))
             .Select(g => new SourcePassageGroupDto(
                 new SourceSummaryDto(g.Key.SourceId, g.Key.SourceTitle, g.Key.SourceContentType),
                 g.Select(p => new PassageHitDto(
-                    p.ChunkId,
-                    p.PageNumber,
-                    p.PageLabel,
-                    p.Section,
-                    p.Headline ?? CutAtWordBoundary(p.Content, 240),
-                    p.Score,
-                    p.MatchedBy)).ToList()))
+                    p.Number,
+                    p.Hit.ChunkId,
+                    p.Hit.PageNumber,
+                    p.Hit.PageLabel,
+                    p.Hit.Section,
+                    p.Hit.Headline ?? CutAtWordBoundary(p.Hit.Content, 240),
+                    p.Hit.Score,
+                    p.Hit.MatchedBy)).ToList()))
             .ToList();
 
         // Save search hits as citations for this search turn
-        var citations = searchHits.Select((hit, index) => new MessageCitation
+        var citations = numberedHits.Select(h => new MessageCitation
         {
             MessageId = userMessage.Id,
-            SourceChunkId = hit.ChunkId,
-            Number = index + 1
+            SourceChunkId = h.Hit.ChunkId,
+            Number = h.Number
         }).ToList();
 
         if (citations.Count > 0)
