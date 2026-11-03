@@ -91,6 +91,37 @@ public class SearchServiceTests
     }
 
     [Fact]
+    public async Task SearchAsync_PreservesHtmlContentInSnippet_ForClientSanitization()
+    {
+        var service = CreateService();
+        var sourceId = Guid.NewGuid();
+        var chunkId = Guid.NewGuid();
+
+        _searchRepo.Hits = [
+            new SearchHit(
+                chunkId,
+                sourceId,
+                "Web Notes",
+                "text/markdown",
+                1,
+                null,
+                "Security",
+                0,
+                "Note containing <img src=x onerror=alert(1)> and <b>bold text</b>.",
+                "Note containing <img src=x onerror=alert(1)> and <mark><b>bold</mark> text</b>.",
+                0.045,
+                0.1f,
+                ["keyword"])
+        ];
+
+        var response = await service.SearchAsync(new SearchRequest("bold"), default);
+
+        var group = Assert.Single(response.Groups);
+        var passage = Assert.Single(group.Passages);
+        Assert.Equal("Note containing <img src=x onerror=alert(1)> and <mark><b>bold</mark> text</b>.", passage.Snippet);
+    }
+
+    [Fact]
     public async Task GenerateSummaryAsync_ReturnsCitedAnswer_AndStoresAssistantMessage()
     {
         var service = CreateService();

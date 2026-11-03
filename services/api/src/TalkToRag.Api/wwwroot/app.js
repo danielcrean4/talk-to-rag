@@ -552,7 +552,7 @@
                     <span class="passage-score" title="RRF / Hybrid Score">Score: ${p.score.toFixed(4)}</span>
                   </div>
                 </div>
-                <div class="passage-snippet">${p.snippet}</div>
+                <div class="passage-snippet">${renderSnippetHtml(p.snippet)}</div>
               </div>
             `;
           }).join('')}
@@ -838,6 +838,13 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
+  }
+
+  function renderSnippetHtml(snippet) {
+    if (!snippet) return '';
+    return escapeHtml(snippet)
+      .replaceAll('&lt;mark&gt;', '<mark>')
+      .replaceAll('&lt;/mark&gt;', '</mark>');
   }
 
   function formatBytes(bytes) {
