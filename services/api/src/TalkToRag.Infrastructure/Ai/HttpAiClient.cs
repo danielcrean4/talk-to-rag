@@ -38,6 +38,36 @@ public sealed class HttpAiClient(HttpClient httpClient) : IAiClient
         return result ?? throw new InvalidOperationException("AI service returned null response.");
     }
 
+    public async Task<ExpandQueryResponse> ExpandQueryAsync(ExpandQueryRequest request, CancellationToken cancellationToken = default)
+    {
+        using var response = await httpClient.PostAsJsonAsync("/v1/rag/expand-query", request, JsonOptions, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.ServiceUnavailable)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            var message = TryExtractErrorMessage(errorBody) ?? "AI embedding service unavailable.";
+            throw new AiServiceUnavailableException(message);
+        }
+
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<ExpandQueryResponse>(JsonOptions, cancellationToken);
+        return result ?? throw new InvalidOperationException("AI service returned null response.");
+    }
+
+    public async Task<AnswerResponse> GenerateAnswerAsync(AnswerRequest request, CancellationToken cancellationToken = default)
+    {
+        using var response = await httpClient.PostAsJsonAsync("/v1/rag/answer", request, JsonOptions, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.ServiceUnavailable)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            var message = TryExtractErrorMessage(errorBody) ?? "AI chat service unavailable.";
+            throw new AiServiceUnavailableException(message);
+        }
+
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<AnswerResponse>(JsonOptions, cancellationToken);
+        return result ?? throw new InvalidOperationException("AI service returned null response.");
+    }
+
     private static string? TryExtractErrorMessage(string json)
     {
         try

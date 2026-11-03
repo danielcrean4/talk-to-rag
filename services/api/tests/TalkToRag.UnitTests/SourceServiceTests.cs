@@ -241,13 +241,6 @@ public class SourceServiceTests
         Assert.Equal(mySource.Id, item.Id);
     }
 
-    private sealed class TestCurrentUser : ICurrentUser
-    {
-        public Guid UserId { get; set; }
-        public bool ThrowOnAccess { get; set; }
-        Guid ICurrentUser.UserId => ThrowOnAccess ? throw new InvalidOperationException("Unauthenticated") : UserId;
-    }
-
     private sealed class InMemorySourceRepository : ISourceRepository
     {
         public List<Source> All { get; } = [];
@@ -294,6 +287,9 @@ public class SourceServiceTests
 
         public Task<IReadOnlyList<Guid>> FindPendingOrProcessingIdsAsync(CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyList<Guid>>(All.Where(s => s.Status == SourceStatus.Pending || s.Status == SourceStatus.Processing).Select(s => s.Id).ToList());
+
+        public Task<IReadOnlyList<Guid>?> FindReadySourceIdsForScopeAsync(Guid userId, IReadOnlyList<Guid> notebookIds, IReadOnlyList<Guid> tagIds, IReadOnlyList<Guid> sourceIds, CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<Guid>?>(null);
 
         public Task SaveChunksAsync(Guid sourceId, IReadOnlyList<SourceChunk> chunks, CancellationToken cancellationToken)
         {

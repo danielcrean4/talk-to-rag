@@ -7,6 +7,7 @@ public sealed record IngestSourceRequest(
 
 public sealed record IngestedChunkDto(
     int PageNumber,
+    string? PageLabel,
     string? Section,
     int ChunkIndex,
     string Content,
@@ -15,7 +16,39 @@ public sealed record IngestedChunkDto(
 public sealed record IngestSourceResponse(
     IReadOnlyList<IngestedChunkDto> Chunks);
 
+public sealed record RecentMessageDto(string Role, string Content);
+
+public sealed record ExpandQueryRequest(
+    string Question,
+    IReadOnlyList<RecentMessageDto> RecentMessages,
+    bool Expand);
+
+public sealed record QueryItemDto(
+    string Text,
+    float[] Embedding);
+
+public sealed record ExpandQueryResponse(
+    IReadOnlyList<QueryItemDto> Queries);
+
+public sealed record PassageItemDto(
+    int N,
+    string Content,
+    string? SourceTitle = null,
+    int? PageNumber = null,
+    string? PageLabel = null,
+    string? Section = null);
+
+public sealed record AnswerRequest(
+    string Question,
+    IReadOnlyList<PassageItemDto> Passages);
+
+public sealed record AnswerResponse(
+    string Answer,
+    IReadOnlyList<int> Cited);
+
 public interface IAiClient
 {
     Task<IngestSourceResponse> IngestSourceAsync(IngestSourceRequest request, CancellationToken cancellationToken = default);
+    Task<ExpandQueryResponse> ExpandQueryAsync(ExpandQueryRequest request, CancellationToken cancellationToken = default);
+    Task<AnswerResponse> GenerateAnswerAsync(AnswerRequest request, CancellationToken cancellationToken = default);
 }

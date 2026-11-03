@@ -20,6 +20,7 @@ class IngestSourceRequest(BaseModel):
 
 class IngestedChunk(BaseModel):
     page_number: int
+    page_label: str | None = None
     section: str | None = None
     chunk_index: int
     content: str
@@ -28,3 +29,41 @@ class IngestedChunk(BaseModel):
 
 class IngestSourceResponse(BaseModel):
     chunks: list[IngestedChunk]
+
+
+class RecentMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class ExpandQueryRequest(BaseModel):
+    question: str
+    recent_messages: list[RecentMessage] = []
+    expand: bool = False
+
+
+class QueryItem(BaseModel):
+    text: str
+    embedding: list[float]
+
+
+class ExpandQueryResponse(BaseModel):
+    queries: list[QueryItem]
+
+
+class PassageItem(BaseModel):
+    n: int
+    content: str
+    source_title: str | None = None
+    page_number: int | None = None
+    section: str | None = None
+
+
+class AnswerRequest(BaseModel):
+    question: str
+    passages: list[PassageItem]
+
+
+class AnswerResponse(BaseModel):
+    answer: str
+    cited: list[int]

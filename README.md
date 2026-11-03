@@ -2,7 +2,7 @@
 
 Ask questions about your own documents out loud and hear answers back, with citations to the page they came from.
 
-**Status:** early. The services, database schema and sign-in run locally; ingestion and search come next. Design: [docs/architecture.md](docs/architecture.md).
+**Status:** Milestone 3 complete. Full ingestion, hybrid RRF search (pgvector HNSW + FTS), cited grounded summaries, and an interactive local Web UI with voice input & read-aloud at [http://localhost:5000](http://localhost:5000). Design: [docs/architecture.md](docs/architecture.md).
 
 ## Run it locally
 
@@ -16,7 +16,8 @@ make test      # Python and .NET tests
 make down      # stop (data is kept in Docker volumes)
 ```
 
-- .NET API: http://localhost:5000/api/health, contract at http://localhost:5000/openapi/v1.json
+- Web UI: http://localhost:5000
+- .NET API: http://localhost:5000/api/health, OpenAPI at http://localhost:5000/openapi/v1.json
 - AI service: http://localhost:8000/docs
 
 ## Why

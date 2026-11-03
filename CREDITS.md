@@ -44,6 +44,13 @@ Versions are the ones locked or pinned when the entry was written; `services/ai/
 | [Pgvector.EntityFrameworkCore](https://github.com/pgvector/pgvector-dotnet) | 0.3.0 | MIT | `vector` type and HNSW index in EF Core | © Andrew Kane |
 | [EFCore.NamingConventions](https://github.com/efcore/EFCore.NamingConventions) | 10.0.1 | Apache-2.0 | snake_case table and column names | © Shay Rojansky and contributors |
 
+### Web UI assets (`services/api/src/TalkToRag.Api/wwwroot`)
+
+| What | Version | Licence | Where | Attribution |
+|---|---|---|---|---|
+| [Inter](https://github.com/rsms/inter) | 4.1 | [SIL Open Font License 1.1](https://openfontlicense.org) | Typography in `wwwroot/index.html` via Google Fonts | © Rasmus Andersson |
+| [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) | 2.304 | [SIL Open Font License 1.1](https://openfontlicense.org) | Monospace typography in `wwwroot/index.html` via Google Fonts | © JetBrains s.r.o. |
+
 ## Models (run by Ollama on the host, not shipped)
 
 Weights are downloaded by each user with `ollama pull`; talk-to-rag does not redistribute them.
@@ -63,6 +70,7 @@ Weights are downloaded by each user with `ollama pull`; talk-to-rag does not red
 | [Docker Desktop](https://www.docker.com/products/docker-desktop/) and Docker Compose | Engine 29.9.2 | Docker Subscription Service Agreement (Desktop); Apache-2.0 (Engine, Compose) | Local stack (`compose.yaml`) |
 | [.NET SDK](https://github.com/dotnet/sdk) (`mcr.microsoft.com/dotnet/sdk:10.0` build image) | 10.0.403 | MIT | Building the API |
 | dotnet-ef (Microsoft.EntityFrameworkCore.Design) | 10.0.14 | MIT | Creating and applying migrations |
+| [Testcontainers for .NET](https://dotnet.testcontainers.org) | 4.16.0 | MIT | Real PostgreSQL + pgvector container integration tests in `TalkToRag.IntegrationTests` |
 | [xUnit](https://github.com/xunit/xunit) | 2.9.3 (runner 3.1.4) | Apache-2.0 | .NET tests |
 | Microsoft.NET.Test.Sdk | 17.14.1 | MIT | .NET test host |
 | [coverlet.collector](https://github.com/coverlet-coverage/coverlet) | 6.0.4 | MIT | .NET code coverage |
