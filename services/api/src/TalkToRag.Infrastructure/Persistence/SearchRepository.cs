@@ -17,35 +17,56 @@ public sealed class SearchRepository(TalkToRagDbContext db) : ISearchRepository
         var includeSemantic = parameters.Mode is "hybrid" or "semantic";
         var includeKeyword = parameters.Mode is "hybrid" or "keyword";
 
-        var embedding = parameters.QueryEmbeddings.Count > 0 ? parameters.QueryEmbeddings[0] : new float[SourceChunk.EmbeddingDimensions];
+        var embeddings = parameters.QueryEmbeddings.Count > 0
+            ? parameters.QueryEmbeddings
+            : [new float[SourceChunk.EmbeddingDimensions]];
         var allowedIds = parameters.AllowedSourceIds?.ToArray() ?? [];
         var filterSources = parameters.AllowedSourceIds is not null;
         var hasMaxDist = parameters.MaxCosineDistance.HasValue;
         var maxDist = parameters.MaxCosineDistance ?? 2.0f;
 
-        const string sql = """
-            WITH semantic AS (
-                SELECT c.id, 
-                       c.source_id,
-                       c.page_number,
-                       c.page_label,
-                       c.section,
-                       c.chunk_index,
-                       c.content,
-                       s.title AS source_title,
-                       s.content_type AS source_content_type,
-                       (c.embedding <=> @embedding::vector) AS distance,
-                       row_number() OVER (ORDER BY c.embedding <=> @embedding::vector) AS rank,
-                       'semantic' AS match_type
-                FROM source_chunks c
-                JOIN sources s ON s.id = c.source_id
-                WHERE s.user_id = @user_id
-                  AND s.status = 'Ready'
-                  AND (@filter_sources = FALSE OR s.id = ANY(@allowed_ids))
-                  AND (@has_max_dist = FALSE OR (c.embedding <=> @embedding::vector) <= @max_dist)
-                ORDER BY c.embedding <=> @embedding::vector
-                LIMIT 50
-            ),
+        var semanticCteList = new List<string>();
+        var candidateUnionList = new List<string>();
+
+        for (var i = 0; i < embeddings.Count; i++)
+        {
+            var cte = $"semantic_{i}";
+            var embParam = $"@embedding_{i}";
+            semanticCteList.Add($"""
+                {cte} AS (
+                    SELECT c.id, 
+                           c.source_id,
+                           c.page_number,
+                           c.page_label,
+                           c.section,
+                           c.chunk_index,
+                           c.content,
+                           s.title AS source_title,
+                           s.content_type AS source_content_type,
+                           (c.embedding <=> {embParam}::vector) AS distance,
+                           row_number() OVER (ORDER BY c.embedding <=> {embParam}::vector) AS rank,
+                           'semantic' AS match_type
+                    FROM source_chunks c
+                    JOIN sources s ON s.id = c.source_id
+                    WHERE s.user_id = @user_id
+                      AND s.status = 'Ready'
+                      AND (@filter_sources = FALSE OR s.id = ANY(@allowed_ids))
+                      AND (@has_max_dist = FALSE OR (c.embedding <=> {embParam}::vector) <= @max_dist)
+                    ORDER BY c.embedding <=> {embParam}::vector
+                    LIMIT 50
+                )
+            """);
+
+            candidateUnionList.Add($"SELECT * FROM {cte} WHERE @include_semantic = TRUE");
+        }
+
+        candidateUnionList.Add("SELECT * FROM keyword WHERE @include_keyword = TRUE");
+
+        var ctesSql = string.Join(",\n", semanticCteList);
+        var candidatesSql = string.Join("\nUNION ALL\n", candidateUnionList);
+
+        var sql = $"""
+            WITH {ctesSql},
             keyword AS (
                 SELECT c.id, 
                        c.source_id,
@@ -56,7 +77,7 @@ public sealed class SearchRepository(TalkToRagDbContext db) : ISearchRepository
                        c.content,
                        s.title AS source_title,
                        s.content_type AS source_content_type,
-                       (c.embedding <=> @embedding::vector) AS distance,
+                       (c.embedding <=> @embedding_0::vector) AS distance,
                        row_number() OVER (ORDER BY ts_rank_cd(c.search_vector, q) DESC) AS rank,
                        'keyword' AS match_type
                 FROM source_chunks c
@@ -70,9 +91,7 @@ public sealed class SearchRepository(TalkToRagDbContext db) : ISearchRepository
                 LIMIT 50
             ),
             candidates AS (
-                SELECT * FROM semantic WHERE @include_semantic = TRUE
-                UNION ALL
-                SELECT * FROM keyword WHERE @include_keyword = TRUE
+                {candidatesSql}
             ),
             fused AS (
                 SELECT id,
@@ -133,7 +152,10 @@ public sealed class SearchRepository(TalkToRagDbContext db) : ISearchRepository
         {
             cmd.Parameters.Add(new NpgsqlParameter("user_id", NpgsqlDbType.Uuid) { Value = parameters.UserId });
             cmd.Parameters.Add(new NpgsqlParameter("query", NpgsqlDbType.Text) { Value = parameters.QueryText });
-            cmd.Parameters.Add(new NpgsqlParameter("embedding", NpgsqlDbType.Text) { Value = new Vector(embedding).ToString() });
+            for (var i = 0; i < embeddings.Count; i++)
+            {
+                cmd.Parameters.Add(new NpgsqlParameter($"embedding_{i}", NpgsqlDbType.Text) { Value = new Vector(embeddings[i]).ToString() });
+            }
             cmd.Parameters.Add(new NpgsqlParameter("allowed_ids", NpgsqlDbType.Array | NpgsqlDbType.Uuid) { Value = allowedIds });
             cmd.Parameters.Add(new NpgsqlParameter("filter_sources", NpgsqlDbType.Boolean) { Value = filterSources });
             cmd.Parameters.Add(new NpgsqlParameter("include_semantic", NpgsqlDbType.Boolean) { Value = includeSemantic });

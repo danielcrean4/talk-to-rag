@@ -183,5 +183,20 @@ public class SearchRepositoryIntegrationTests : IAsyncLifetime
         var scopedParams = hybridParams with { AllowedSourceIds = [sourcePendingA.Id] };
         var scopedHits = await repo.SearchAsync(scopedParams, default);
         Assert.Empty(scopedHits);
+
+        // 6. Multi-query expansion: only the second query embedding matches chunkDqn
+        // Query 0 is vector(5) (distance 1.0 > 0.05 cutoff)
+        // Query 1 is vector(1) (exact match to chunkDqn with distance 0.0 <= 0.05 cutoff)
+        var multiQueryParams = hybridParams with
+        {
+            QueryEmbeddings = [MakeVector(5), MakeVector(1)],
+            QueryText = "nonmatching keyword",
+            Mode = "semantic",
+            MaxCosineDistance = 0.05f
+        };
+        var multiHits = await repo.SearchAsync(multiQueryParams, default);
+        var dqnHit = Assert.Single(multiHits);
+        Assert.Equal(chunkDqn.Id, dqnHit.ChunkId);
+        Assert.Contains("semantic", dqnHit.MatchedBy);
     }
 }
