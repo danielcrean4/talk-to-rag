@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using TalkToRag.Application.Common.Exceptions;
 using TalkToRag.Application.Common.Interfaces;
 using TalkToRag.Application.Search;
@@ -16,10 +16,10 @@ public class SearchServiceTests
     private readonly FakeAiClient _aiClient = new();
     private readonly TestCurrentUser _currentUser = new() { UserId = Guid.NewGuid() };
     private readonly FixedClock _clock = new();
-    private readonly IConfiguration _config = new ConfigurationBuilder().AddInMemoryCollection().Build();
+    private readonly IOptions<SearchOptions> _options = Options.Create(new SearchOptions());
 
     private SearchService CreateService() =>
-        new(_searchRepo, _sourceRepo, _conversationRepo, _aiClient, _currentUser, _config, _clock);
+        new(_searchRepo, _sourceRepo, _conversationRepo, _aiClient, _currentUser, _options, _clock);
 
     [Theory]
     [InlineData("")]

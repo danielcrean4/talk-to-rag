@@ -44,6 +44,13 @@ Versions are the ones locked or pinned when the entry was written; `services/ai/
 | [Pgvector.EntityFrameworkCore](https://github.com/pgvector/pgvector-dotnet) | 0.3.0 | MIT | `vector` type and HNSW index in EF Core | © Andrew Kane |
 | [EFCore.NamingConventions](https://github.com/efcore/EFCore.NamingConventions) | 10.0.1 | Apache-2.0 | snake_case table and column names | © Shay Rojansky and contributors |
 
+### Web UI assets (`services/api/src/TalkToRag.Api/wwwroot`)
+
+| What | Version | Licence | Where | Attribution |
+|---|---|---|---|---|
+| [Inter](https://github.com/rsms/inter) | 4.1 | [SIL Open Font License 1.1](https://openfontlicense.org) | Typography in `wwwroot/index.html` via Google Fonts | © Rasmus Andersson |
+| [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) | 2.304 | [SIL Open Font License 1.1](https://openfontlicense.org) | Monospace typography in `wwwroot/index.html` via Google Fonts | © JetBrains s.r.o. |
+
 ## Models (run by Ollama on the host, not shipped)
 
 Weights are downloaded by each user with `ollama pull`; talk-to-rag does not redistribute them.

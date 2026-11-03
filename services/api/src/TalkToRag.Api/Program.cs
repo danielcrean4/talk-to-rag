@@ -5,6 +5,7 @@ using TalkToRag.Api.Errors;
 using TalkToRag.Api.Security;
 using TalkToRag.Application;
 using TalkToRag.Application.Common.Interfaces;
+using TalkToRag.Application.Search;
 using TalkToRag.Infrastructure;
 using TalkToRag.Infrastructure.Security;
 
@@ -14,14 +15,8 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApplicationExceptionHandler>();
-builder.Services.AddCors(options =>
-{
-    options.AddDefaultPolicy(policy =>
-    {
-        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
-    });
-});
 
+builder.Services.Configure<SearchOptions>(builder.Configuration.GetSection(SearchOptions.SectionName));
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
@@ -54,7 +49,6 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseCors();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseAuthentication();

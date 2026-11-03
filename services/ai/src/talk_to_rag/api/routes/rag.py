@@ -40,12 +40,15 @@ def expand_query(request: ExpandQueryRequest) -> ExpandQueryResponse:
             )
             context_messages.append(Message(role="user", content=prompt))
             completion = model.complete(context_messages)
-            lines = [line.strip().lstrip("*-0123456789. ") for line in completion.splitlines() if line.strip()]
-            if lines:
-                for line in lines[:3]:
-                    if line and line not in query_texts:
-                        query_texts.append(line)
-        except Exception as exc:
+            lines = [
+                re.sub(r"^(?:\s*[-*]|\s*\d+[.)])+\s*", "", line).strip()
+                for line in completion.splitlines()
+                if line.strip()
+            ]
+            for line in lines[:3]:
+                if line and line not in query_texts:
+                    query_texts.append(line)
+        except ModelError as exc:
             logger.warning("Query expansion failed; falling back to original query: %s", exc)
 
     try:
@@ -112,14 +115,11 @@ def answer_passages(request: AnswerRequest) -> AnswerResponse:
     invented_citations: list[int] = []
 
     for raw in cited_raw:
-        try:
-            n = int(raw)
-            if n in valid_passage_numbers:
-                cited_numbers.add(n)
-            else:
-                invented_citations.append(n)
-        except ValueError:
-            pass
+        n = int(raw)
+        if n in valid_passage_numbers:
+            cited_numbers.add(n)
+        else:
+            invented_citations.append(n)
 
     if invented_citations:
         logger.warning(
@@ -129,5 +129,5 @@ def answer_passages(request: AnswerRequest) -> AnswerResponse:
 
     return AnswerResponse(
         answer=completion.strip(),
-        cited=sorted(list(cited_numbers)),
+        cited=sorted(cited_numbers),
     )

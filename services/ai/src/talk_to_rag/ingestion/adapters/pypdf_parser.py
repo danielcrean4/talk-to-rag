@@ -19,20 +19,11 @@ class PyPdfSourceParser:
             reader = PdfReader(io.BytesIO(content))
         except (PyPdfError, ValueError) as exc:
             raise IngestionError(f"Corrupt or invalid PDF: {exc}") from exc
-        except Exception as exc:
-            # Broad fallback for unexpected parser crashes on malformed PDF streams
-            raise IngestionError(f"Failed to read PDF structure: {exc}") from exc
 
         if reader.is_encrypted and reader.decrypt("") == PasswordType.NOT_DECRYPTED:
             raise IngestionError("PDF is password-protected or encrypted.")
 
-        page_labels: list[str] = []
-        try:
-            raw_labels = getattr(reader, "page_labels", None)
-            if raw_labels:
-                page_labels = [str(lbl) for lbl in raw_labels]
-        except Exception:
-            page_labels = []
+        page_labels = [str(lbl) for lbl in reader.page_labels] if reader.page_labels else []
 
         pages: list[ParsedPage] = []
         for index, page in enumerate(reader.pages):

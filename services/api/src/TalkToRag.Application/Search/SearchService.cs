@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using TalkToRag.Application.Common.Exceptions;
 using TalkToRag.Application.Common.Interfaces;
 using TalkToRag.Domain.Entities;
@@ -12,7 +12,7 @@ public sealed class SearchService(
     IConversationRepository conversationRepository,
     IAiClient aiClient,
     ICurrentUser currentUser,
-    IConfiguration configuration,
+    IOptions<SearchOptions> options,
     TimeProvider timeProvider) : ISearchService
 {
     public async Task<SearchResponse> SearchAsync(SearchRequest request, CancellationToken cancellationToken)
@@ -32,7 +32,6 @@ public sealed class SearchService(
             _ => "hybrid"
         };
 
-        // Resolve scope
         var allowedSourceIds = await sourceRepository.FindReadySourceIdsForScopeAsync(
             userId,
             request.NotebookIds ?? [],
@@ -40,40 +39,34 @@ public sealed class SearchService(
             request.SourceIds ?? [],
             cancellationToken);
 
-        // Get or create conversation
-        var conversation = await GetOrCreateConversationAsync(userId, request.ConversationId, trimmedQuery, cancellationToken);
-
-        // Save user query message
-        var userMessage = new Message
-        {
-            Id = Guid.CreateVersion7(),
-            ConversationId = conversation.Id,
-            Role = MessageRole.User,
-            Content = trimmedQuery,
-            CreatedAtUtc = timeProvider.GetUtcNow()
-        };
-        await conversationRepository.AddMessageAsync(userMessage, cancellationToken);
-
-        // If specific scope was requested and matched 0 sources, return empty results
         if (allowedSourceIds is not null && allowedSourceIds.Count == 0)
         {
-            return new SearchResponse(conversation.Id, trimmedQuery, []);
+            var emptyConv = await GetOrCreateConversationAsync(userId, request.ConversationId, trimmedQuery, cancellationToken);
+            var emptyUserMsg = new Message
+            {
+                Id = Guid.CreateVersion7(),
+                ConversationId = emptyConv.Id,
+                Role = MessageRole.User,
+                Content = trimmedQuery,
+                CreatedAtUtc = timeProvider.GetUtcNow()
+            };
+            await conversationRepository.AddMessageAsync(emptyUserMsg, cancellationToken);
+            return new SearchResponse(emptyConv.Id, trimmedQuery, []);
         }
 
-        // Get query embedding(s) from AI service
-        var recentMessages = (await conversationRepository.GetMessagesForConversationAsync(conversation.Id, cancellationToken))
-            .TakeLast(6)
-            .Select(m => new RecentMessageDto(m.Role.ToString().ToLowerInvariant(), m.Content))
-            .ToList();
+        var recentMessages = request.ConversationId.HasValue
+            ? (await conversationRepository.GetMessagesForConversationAsync(request.ConversationId.Value, cancellationToken))
+                .TakeLast(6)
+                .Select(m => new RecentMessageDto(m.Role.ToString().ToLowerInvariant(), m.Content))
+                .ToList()
+            : [];
 
         var expandResponse = await aiClient.ExpandQueryAsync(
             new ExpandQueryRequest(trimmedQuery, recentMessages, request.Expand),
             cancellationToken);
 
         var embeddings = expandResponse.Queries.Select(q => q.Embedding).ToList();
-        float? maxDistance = float.TryParse(configuration["Search:MaxCosineDistance"], out var parsedDist)
-            ? parsedDist
-            : 0.6f;
+        var maxDistance = options.Value.MaxCosineDistance;
 
         var searchHits = await searchRepository.SearchAsync(
             new SearchQueryParameters(
@@ -86,9 +79,20 @@ public sealed class SearchService(
                 Limit: limit),
             cancellationToken);
 
+        var conversation = await GetOrCreateConversationAsync(userId, request.ConversationId, trimmedQuery, cancellationToken);
+
+        var userMessage = new Message
+        {
+            Id = Guid.CreateVersion7(),
+            ConversationId = conversation.Id,
+            Role = MessageRole.User,
+            Content = trimmedQuery,
+            CreatedAtUtc = timeProvider.GetUtcNow()
+        };
+        await conversationRepository.AddMessageAsync(userMessage, cancellationToken);
+
         var numberedHits = searchHits.Select((hit, index) => (Hit: hit, Number: index + 1)).ToList();
 
-        // Group hits by source
         var groups = numberedHits
             .GroupBy(h => (h.Hit.SourceId, h.Hit.SourceTitle, h.Hit.SourceContentType))
             .Select(g => new SourcePassageGroupDto(
@@ -104,7 +108,6 @@ public sealed class SearchService(
                     p.Hit.MatchedBy)).ToList()))
             .ToList();
 
-        // Save search hits as citations for this search turn
         var citations = numberedHits.Select(h => new MessageCitation
         {
             MessageId = userMessage.Id,
@@ -175,11 +178,20 @@ public sealed class SearchService(
         };
         await conversationRepository.AddMessageAsync(assistantMessage, cancellationToken);
 
-        var citations = answerResponse.Cited.Select(num =>
+        var citationsMap = lastUserMessage.Citations.ToDictionary(c => c.Number);
+        var citations = new List<MessageCitation>();
+        foreach (var num in answerResponse.Cited)
         {
-            var match = lastUserMessage.Citations.FirstOrDefault(c => c.Number == num);
-            return match != null ? new MessageCitation { MessageId = assistantMessage.Id, SourceChunkId = match.SourceChunkId, Number = num } : null;
-        }).Where(c => c != null).Select(c => c!).ToList();
+            if (citationsMap.TryGetValue(num, out var match))
+            {
+                citations.Add(new MessageCitation
+                {
+                    MessageId = assistantMessage.Id,
+                    SourceChunkId = match.SourceChunkId,
+                    Number = num
+                });
+            }
+        }
 
         if (citations.Count > 0)
         {

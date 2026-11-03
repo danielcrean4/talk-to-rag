@@ -50,7 +50,7 @@ def test_expand_query_expansion_failure_falls_back(monkeypatch):
 
     class CrashingChat:
         def complete(self, messages):
-            raise RuntimeError("Model generation failed")
+            raise ModelError("Model generation failed")
 
     monkeypatch.setattr("talk_to_rag.api.routes.rag.chat_model", lambda _: CrashingChat())
 
@@ -64,6 +64,28 @@ def test_expand_query_expansion_failure_falls_back(monkeypatch):
     data = response.json()
     assert len(data["queries"]) == 1
     assert data["queries"][0]["text"] == "what is TD learning?"
+
+
+def test_expand_query_preserves_numeric_prefixes_in_search_terms(monkeypatch):
+    monkeypatch.setenv("TALK_TO_RAG_EMBED", "fake-embed")
+
+    class NumberedListChat:
+        def complete(self, messages):
+            return "1. 2024 tax rules update\n2. * IRS guidelines 2024\n3. 1040 deductions"
+
+    monkeypatch.setattr("talk_to_rag.api.routes.rag.chat_model", lambda _: NumberedListChat())
+
+    client = TestClient(create_app())
+    response = client.post(
+        "/v1/rag/expand-query",
+        json={"question": "tax rules", "expand": True},
+    )
+
+    assert response.status_code == 200
+    queries = [q["text"] for q in response.json()["queries"]]
+    assert "2024 tax rules update" in queries
+    assert "IRS guidelines 2024" in queries
+    assert "1040 deductions" in queries
 
 
 def test_expand_query_rejects_empty():

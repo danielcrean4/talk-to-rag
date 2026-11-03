@@ -26,11 +26,8 @@ public sealed class ConversationRepository(TalkToRagDbContext db) : IConversatio
         await db.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task UpdateAsync(Conversation conversation, CancellationToken cancellationToken)
-    {
-        db.Conversations.Update(conversation);
-        await db.SaveChangesAsync(cancellationToken);
-    }
+    public Task UpdateAsync(Conversation conversation, CancellationToken cancellationToken) =>
+        db.SaveChangesAsync(cancellationToken);
 
     public async Task AddMessageAsync(Message message, CancellationToken cancellationToken)
     {
