@@ -2,7 +2,7 @@
 
 import io
 import re
-from pypdf import PdfReader
+from pypdf import PasswordType, PdfReader
 from pypdf.errors import PyPdfError
 
 from talk_to_rag.ingestion.contracts import IngestionError, ParsedPage
@@ -17,15 +17,14 @@ class PyPdfSourceParser:
 
         try:
             reader = PdfReader(io.BytesIO(content))
-            if reader.is_encrypted:
-                raise IngestionError("PDF is password-protected or encrypted.")
-        except IngestionError:
-            raise
         except (PyPdfError, ValueError) as exc:
             raise IngestionError(f"Corrupt or invalid PDF: {exc}") from exc
         except Exception as exc:
             # Broad fallback for unexpected parser crashes on malformed PDF streams
             raise IngestionError(f"Failed to read PDF structure: {exc}") from exc
+
+        if reader.is_encrypted and reader.decrypt("") == PasswordType.NOT_DECRYPTED:
+            raise IngestionError("PDF is password-protected or encrypted.")
 
         page_labels: list[str] = []
         try:

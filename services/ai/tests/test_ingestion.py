@@ -47,6 +47,43 @@ def test_pypdf_parser_rejects_empty_or_corrupt_bytes():
         parser.parse(b"not a valid pdf content at all")
 
 
+def test_pypdf_parser_accepts_copy_protected_pdf_with_owner_password():
+    from io import BytesIO
+    from pypdf import PdfReader, PdfWriter
+
+    sample = (FIXTURES_DIR / "sample.pdf").read_bytes()
+    reader = PdfReader(BytesIO(sample))
+    writer = PdfWriter()
+    for page in reader.pages:
+        writer.add_page(page)
+    writer.encrypt(user_password="", owner_password="owner_restriction_secret")
+    buf = BytesIO()
+    writer.write(buf)
+
+    parser = PyPdfSourceParser()
+    pages = parser.parse(buf.getvalue())
+    assert len(pages) == 2
+    assert "Temporal-difference learning" in pages[0].text
+
+
+def test_pypdf_parser_rejects_user_password_encrypted_pdf():
+    from io import BytesIO
+    from pypdf import PdfReader, PdfWriter
+
+    sample = (FIXTURES_DIR / "sample.pdf").read_bytes()
+    reader = PdfReader(BytesIO(sample))
+    writer = PdfWriter()
+    for page in reader.pages:
+        writer.add_page(page)
+    writer.encrypt(user_password="actual_secret", owner_password="owner_secret")
+    buf = BytesIO()
+    writer.write(buf)
+
+    parser = PyPdfSourceParser()
+    with pytest.raises(IngestionError, match="PDF is password-protected or encrypted"):
+        parser.parse(buf.getvalue())
+
+
 def test_pypdf_parser_rejoins_hyphenated_linebreaks_and_captures_page_labels(monkeypatch):
     class StubPage:
         def extract_text(self):
