@@ -16,13 +16,16 @@ migrate:  ## Apply EF Core migrations to the compose Postgres
 	cd services/api && dotnet tool restore && dotnet ef database update \
 		--project src/TalkToRag.Infrastructure --startup-project src/TalkToRag.Api
 
-test: test-ai test-api
+test: test-ai test-api test-eval
 
 test-ai:
 	cd services/ai && uv run pytest -q
 
 test-api:
 	cd services/api && dotnet test
+
+test-eval:
+	python3 evaluation/evaluate.py --mock
 
 health:  ## Ask each service if it's up
 	@curl -fsS http://localhost:8000/health && echo

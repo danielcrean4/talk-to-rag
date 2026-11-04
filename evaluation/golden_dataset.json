@@ -1,0 +1,72 @@
+[
+  {
+    "id": "cs229-01",
+    "question": "What is the normal equation for linear regression?",
+    "target_source_title": "cs229-notes1",
+    "target_pages": [8, 10],
+    "category": "formula"
+  },
+  {
+    "id": "cs229-02",
+    "question": "How does batch gradient descent differ from stochastic gradient descent?",
+    "target_source_title": "cs229-notes1",
+    "target_pages": [4, 5, 6],
+    "category": "concept"
+  },
+  {
+    "id": "cs229-03",
+    "question": "What is the update rule for the LMS algorithm?",
+    "target_source_title": "cs229-notes1",
+    "target_pages": [3, 4],
+    "category": "algorithm"
+  },
+  {
+    "id": "cs229-04",
+    "question": "Why is the matrix X^T X invertible when features are linearly independent?",
+    "target_source_title": "cs229-notes1",
+    "target_pages": [9, 10],
+    "category": "linear_algebra"
+  },
+  {
+    "id": "cs229-05",
+    "question": "How is the logistic function or sigmoid defined in logistic regression?",
+    "target_source_title": "cs229-notes1",
+    "target_pages": [14, 15, 16],
+    "category": "classification"
+  },
+  {
+    "id": "cs229-06",
+    "question": "What is the Hessian matrix and Newton-Raphson update rule?",
+    "target_source_title": "cs229-notes1",
+    "target_pages": [21, 22],
+    "category": "optimization"
+  },
+  {
+    "id": "cs229-07",
+    "question": "What defines the exponential family distribution?",
+    "target_source_title": "cs229-notes1",
+    "target_pages": [24, 25, 26],
+    "category": "probability"
+  },
+  {
+    "id": "cs229-08",
+    "question": "How are Generalized Linear Models (GLM) constructed from exponential family assumptions?",
+    "target_source_title": "cs229-notes1",
+    "target_pages": [26, 27, 28],
+    "category": "glm"
+  },
+  {
+    "id": "cs229-09",
+    "question": "What is the trace of a square matrix and its cyclic property?",
+    "target_source_title": "cs229-linalg",
+    "target_pages": [8, 9, 10],
+    "category": "linear_algebra"
+  },
+  {
+    "id": "cs229-10",
+    "question": "How do eigenvalues and eigenvectors relate to positive definite matrices?",
+    "target_source_title": "cs229-linalg",
+    "target_pages": [15, 16, 17],
+    "category": "linear_algebra"
+  }
+]
