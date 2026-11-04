@@ -204,6 +204,85 @@ public sealed class SearchService(
         return new SummaryResponse(conversationId, lastUserMessage.Content, answerResponse.Answer, answerResponse.Cited);
     }
 
+    public async IAsyncEnumerable<string> StreamSummaryAsync(Guid conversationId, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var userId = currentUser.UserId;
+        var conversation = await conversationRepository.FindByIdForUserAsync(conversationId, userId, cancellationToken);
+        if (conversation is null)
+        {
+            throw new NotFoundException($"Conversation '{conversationId}' not found.");
+        }
+
+        var messages = await conversationRepository.GetMessagesForConversationAsync(conversationId, cancellationToken);
+        var lastUserMessage = messages.LastOrDefault(m => m.Role == MessageRole.User);
+        if (lastUserMessage is null)
+        {
+            throw new RequestValidationException("No user query found to summarize.");
+        }
+
+        if (lastUserMessage.Citations.Count == 0)
+        {
+            yield return "data: {\"token\": \"No passages were found for this query to summarize.\"}";
+            yield return "data: {\"done\": true, \"cited\": []}";
+            yield break;
+        }
+
+        var chunkIds = lastUserMessage.Citations.Select(c => c.SourceChunkId).ToList();
+        var chunks = await conversationRepository.GetChunksByIdsAsync(chunkIds, cancellationToken);
+        var chunkMap = chunks.ToDictionary(c => c.Id);
+
+        var passageItems = lastUserMessage.Citations
+            .OrderBy(c => c.Number)
+            .Take(10)
+            .Select(c =>
+            {
+                chunkMap.TryGetValue(c.SourceChunkId, out var chunk);
+                return new PassageItemDto(
+                    N: c.Number,
+                    Content: chunk?.Content ?? "",
+                    PageNumber: chunk?.PageNumber,
+                    PageLabel: chunk?.PageLabel,
+                    Section: chunk?.Section);
+            })
+            .Where(p => !string.IsNullOrEmpty(p.Content))
+            .ToList();
+
+        var textBuffer = new System.Text.StringBuilder();
+
+        await foreach (var line in aiClient.StreamAnswerAsync(
+            new AnswerRequest(lastUserMessage.Content, passageItems),
+            cancellationToken))
+        {
+            yield return line;
+
+            if (line.StartsWith("data: ") && !line.Contains("\"done\": true"))
+            {
+                try
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(line[6..]);
+                    if (doc.RootElement.TryGetProperty("token", out var tokenProp))
+                    {
+                        textBuffer.Append(tokenProp.GetString());
+                    }
+                }
+                catch { }
+            }
+        }
+
+        if (textBuffer.Length > 0)
+        {
+            var assistantMessage = new Message
+            {
+                Id = Guid.CreateVersion7(),
+                ConversationId = conversationId,
+                Role = MessageRole.Assistant,
+                Content = textBuffer.ToString().Trim(),
+                CreatedAtUtc = timeProvider.GetUtcNow()
+            };
+            await conversationRepository.AddMessageAsync(assistantMessage, cancellationToken);
+        }
+    }
+
     private async Task<Conversation> GetOrCreateConversationAsync(Guid userId, Guid? conversationId, string query, CancellationToken cancellationToken)
     {
         if (conversationId.HasValue && conversationId.Value != Guid.Empty)

@@ -27,6 +27,10 @@ class ChatModel(Protocol):
         """Return the assistant's reply to the conversation so far."""
         ...
 
+    def stream(self, messages: Sequence[Message]):
+        """Yield token strings as they arrive from the backend."""
+        ...
+
 
 @runtime_checkable
 class Embedder(Protocol):

@@ -156,7 +156,36 @@ def test_answer_passages_empty_passages():
     assert data["cited"] == []
 
 
+def test_answer_passages_stream_yields_tokens_and_citations(monkeypatch):
+    class StreamingStubChat:
+        def stream(self, messages):
+            yield "Temporal "
+            yield "difference "
+            yield "bootstraps [1]."
+
+    monkeypatch.setattr("talk_to_rag.api.routes.rag.chat_model", lambda _: StreamingStubChat())
+
+    client = TestClient(create_app())
+    response = client.post(
+        "/v1/rag/answer/stream",
+        json={
+            "question": "Explain bootstrapping.",
+            "passages": [
+                {"n": 1, "content": "TD learning bootstraps.", "page_number": 120},
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    assert "text/event-stream" in response.headers["content-type"]
+    lines = [line for line in response.text.split("\n") if line.startswith("data: ")]
+    assert len(lines) >= 3
+    assert any("Temporal" in line for line in lines)
+    assert any('"done": true' in line and '"cited": [1]' in line for line in lines)
+
+
 def test_rag_endpoints_are_in_openapi():
     paths = TestClient(create_app()).get("/openapi.json").json()["paths"]
     assert "/v1/rag/expand-query" in paths
     assert "/v1/rag/answer" in paths
+    assert "/v1/rag/answer/stream" in paths

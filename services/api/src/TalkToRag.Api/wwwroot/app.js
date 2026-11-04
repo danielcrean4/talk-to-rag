@@ -631,7 +631,7 @@
     });
   }
 
-  // --- Grounded AI Summary ---
+  // --- Grounded AI Summary Streaming via SSE ---
   async function handleGenerateSummary() {
     if (!state.currentConversationId) {
       alert('Please perform a search first.');
@@ -640,13 +640,67 @@
 
     el.generateSummaryBtn.disabled = true;
     el.generateSummaryBtn.textContent = '✨ Generating...';
+    el.summarySection.style.display = 'block';
+    el.summaryAnswer.innerHTML = '<span class="summary-streaming-indicator">Thinking and synthesizing from sources...</span>';
+    el.summaryCitationsList.textContent = 'Streaming citations...';
+    el.summarySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     try {
-      const summary = await apiFetch(`/api/search/${state.currentConversationId}/summary`, {
-        method: 'POST',
+      const response = await fetch(`/api/search/${state.currentConversationId}/summary/stream`, {
+        headers: {
+          'Authorization': `Bearer ${state.token}`
+        }
       });
 
-      renderSummary(summary);
+      if (!response.ok) {
+        throw new Error(`Summary streaming failed: ${response.statusText}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let accumulatedText = '';
+      let citedPassages = [];
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('data: ')) {
+            const dataStr = trimmed.slice(6);
+            try {
+              const data = JSON.parse(dataStr);
+              if (data.token) {
+                accumulatedText += data.token;
+                el.summaryAnswer.innerHTML = formatAnswerWithCitations(accumulatedText);
+              }
+              if (data.done && data.cited) {
+                citedPassages = data.cited;
+              }
+              if (data.error) {
+                throw new Error(data.error);
+              }
+            } catch (err) {
+              if (err.message && !err.message.includes('JSON')) throw err;
+            }
+          }
+        }
+      }
+
+      el.summaryAnswer.innerHTML = formatAnswerWithCitations(accumulatedText);
+      if (citedPassages && citedPassages.length > 0) {
+        el.summaryCitationsList.innerHTML = citedPassages
+          .map(num => `<a href="#passage-hit-${num}" class="citation-pill" onclick="window.scrollToCitation(${num}, event)">[${num}]</a>`)
+          .join(' ');
+      } else {
+        el.summaryCitationsList.textContent = 'None directly cited in answer.';
+      }
     } catch (err) {
       alert(`Summary generation failed: ${err.message}`);
     } finally {

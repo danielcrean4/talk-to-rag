@@ -234,6 +234,65 @@ public class SearchServiceTests
         Assert.Equal(1, assistantMsg.Citations.First().Number);
     }
 
+    [Fact]
+    public async Task StreamSummaryAsync_YieldsSseLines_AndPersistsAssistantMessage()
+    {
+        var service = CreateService();
+        var convId = Guid.NewGuid();
+        var chunkId = Guid.NewGuid();
+
+        _conversationRepo.Conversations.Add(new Conversation
+        {
+            Id = convId,
+            UserId = _currentUser.UserId,
+            Title = "TD Learning Query",
+            CreatedAtUtc = _clock.GetUtcNow(),
+            UpdatedAtUtc = _clock.GetUtcNow()
+        });
+
+        var userMsgId = Guid.NewGuid();
+        var userMsg = new Message
+        {
+            Id = userMsgId,
+            ConversationId = convId,
+            Role = MessageRole.User,
+            Content = "What is TD learning?",
+            CreatedAtUtc = _clock.GetUtcNow()
+        };
+        userMsg.Citations.Add(new MessageCitation
+        {
+            MessageId = userMsgId,
+            SourceChunkId = chunkId,
+            Number = 1
+        });
+        _conversationRepo.Conversations.First(c => c.Id == convId).Messages.Add(userMsg);
+
+        _conversationRepo.Chunks[chunkId] = new SourceChunk
+        {
+            Id = chunkId,
+            SourceId = Guid.NewGuid(),
+            PageNumber = 42,
+            ChunkIndex = 0,
+            Content = "Temporal difference learning is an approach to reinforcement learning.",
+            Embedding = [0.1f, 0.2f]
+        };
+
+        var events = new List<string>();
+        await foreach (var evt in service.StreamSummaryAsync(convId, default))
+        {
+            events.Add(evt);
+        }
+
+        Assert.Equal(3, events.Count);
+        Assert.Contains("TD learning", events[0]);
+        Assert.Contains("bootstraps [1].", events[1]);
+        Assert.Contains("\"done\": true", events[2]);
+
+        var messages = await _conversationRepo.GetMessagesForConversationAsync(convId, default);
+        Assert.Equal(2, messages.Count);
+        Assert.Equal("TD learning bootstraps [1].", messages.Last().Content);
+    }
+
     private sealed class InMemorySearchRepo : ISearchRepository
     {
         public List<SearchHit> Hits { get; set; } = [];
@@ -317,6 +376,13 @@ public class SearchServiceTests
 
         public Task<AnswerResponse> GenerateAnswerAsync(AnswerRequest request, CancellationToken cancellationToken = default) =>
             Task.FromResult(AnswerToReturn);
+
+        public async IAsyncEnumerable<string> StreamAnswerAsync(AnswerRequest request, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            yield return "data: {\"token\": \"TD learning \"}";
+            yield return "data: {\"token\": \"bootstraps [1].\"}";
+            yield return "data: {\"done\": true, \"cited\": [1]}";
+        }
 
         public Task<IngestSourceResponse> IngestSourceAsync(IngestSourceRequest request, CancellationToken cancellationToken = default) =>
             throw new NotImplementedException();

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using TalkToRag.Application.Common.Exceptions;
 using TalkToRag.Application.Common.Interfaces;
@@ -66,6 +67,28 @@ public sealed class HttpAiClient(HttpClient httpClient) : IAiClient
         response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadFromJsonAsync<AnswerResponse>(JsonOptions, cancellationToken);
         return result ?? throw new InvalidOperationException("AI service returned null response.");
+    }
+
+    public async IAsyncEnumerable<string> StreamAnswerAsync(AnswerRequest request, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, "/v1/rag/answer/stream")
+        {
+            Content = JsonContent.Create(request, options: JsonOptions)
+        };
+
+        using var response = await httpClient.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var reader = new StreamReader(stream);
+
+        while (await reader.ReadLineAsync(cancellationToken) is { } line)
+        {
+            if (!string.IsNullOrEmpty(line))
+            {
+                yield return line;
+            }
+        }
     }
 
     private static string? TryExtractErrorMessage(string json)

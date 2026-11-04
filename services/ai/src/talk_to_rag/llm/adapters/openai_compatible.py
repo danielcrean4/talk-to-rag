@@ -29,6 +29,19 @@ class OpenAICompatibleChat:
             )
         return response.choices[0].message.content or ""
 
+    def stream(self, messages: Sequence[Message]) -> Iterator[str]:
+        with _as_model_error(self._model):
+            response = self._client.chat.completions.create(
+                model=self._model,
+                messages=[{"role": m.role, "content": m.content} for m in messages],
+                stream=True,
+                **self._options,
+            )
+            for chunk in response:
+                delta = chunk.choices[0].delta.content if chunk.choices else None
+                if delta:
+                    yield delta
+
 
 class OpenAICompatibleEmbedder:
     def __init__(self, client: Any, model: str, options: Mapping[str, Any]):

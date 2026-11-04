@@ -12,6 +12,11 @@ class FakeChat:
         last_user = next((m.content for m in reversed(messages) if m.role == "user"), "")
         return f"(fake reply to: {last_user})"
 
+    def stream(self, messages: Sequence[Message]):
+        full = self.complete(messages)
+        for word in full.split(" "):
+            yield word + " "
+
 
 class FakeEmbedder:
     def __init__(

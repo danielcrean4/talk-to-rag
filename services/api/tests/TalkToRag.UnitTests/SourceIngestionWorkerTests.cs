@@ -421,6 +421,12 @@ public class SourceIngestionWorkerTests
 
         public Task<AnswerResponse> GenerateAnswerAsync(AnswerRequest request, CancellationToken cancellationToken = default) =>
             Task.FromResult(new AnswerResponse("", []));
+
+        public async IAsyncEnumerable<string> StreamAnswerAsync(AnswerRequest request, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            await Task.Yield();
+            yield break;
+        }
     }
 
     private sealed class StubHttpMessageHandler(HttpStatusCode statusCode, string content) : HttpMessageHandler
