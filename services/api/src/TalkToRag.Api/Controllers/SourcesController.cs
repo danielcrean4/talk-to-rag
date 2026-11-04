@@ -41,6 +41,17 @@ public sealed class SourcesController(ISourceService sourceService) : Controller
     public Task<SourceDto> GetById(Guid id, CancellationToken cancellationToken) =>
         sourceService.GetByIdAsync(id, cancellationToken);
 
+    [HttpGet("{id:guid}/file")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetFile(Guid id, CancellationToken cancellationToken)
+    {
+        var file = await sourceService.GetFileAsync(id, cancellationToken);
+        Response.Headers.Append("Content-Disposition", $"inline; filename=\"{file.FileName}\"");
+        return File(file.Stream, file.ContentType, enableRangeProcessing: true);
+    }
+
     [HttpPost("{id:guid}/retry")]
     [ProducesResponseType(StatusCodes.Status202Accepted)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

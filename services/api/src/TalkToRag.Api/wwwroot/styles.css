@@ -537,21 +537,124 @@ body {
   white-space: pre-wrap;
 }
 
-.citation-tag {
-  display: inline-block;
-  background-color: var(--primary);
-  color: #fff;
+.citation-tag, .citation-pill, .inline-citation {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #312e81;
+  color: #e0e7ff;
+  border: 1px solid #6366f1;
   border-radius: 4px;
   font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.1rem 0.4rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
   margin: 0 0.2rem;
   cursor: pointer;
   text-decoration: none;
+  line-height: 1.2;
+  transition: all 0.15s ease;
 }
 
-.citation-tag:hover {
-  background-color: var(--primary-hover);
+.citation-tag:hover, .citation-pill:hover, .inline-citation:hover {
+  background-color: #4338ca;
+  color: #ffffff;
+  border-color: #818cf8;
+}
+
+.source-file-link {
+  color: var(--text-main);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.15s ease;
+}
+
+.source-file-link:hover {
+  color: #818cf8;
+  text-decoration: underline;
+}
+
+.source-filename-link {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.75rem;
+  transition: color 0.15s ease;
+}
+
+.source-filename-link:hover {
+  color: #c7d2fe;
+  text-decoration: underline;
+}
+
+.badge-page-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background-color: var(--primary-light);
+  color: #c7d2fe;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.badge-page-link:hover {
+  background-color: #4338ca;
+  color: #ffffff;
+  border-color: #818cf8;
+}
+
+.group-source-link {
+  color: var(--text-main);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: color 0.15s ease;
+}
+
+.group-source-link:hover {
+  color: #818cf8;
+  text-decoration: underline;
+}
+
+.active-settings-pill {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background-color: var(--bg-app);
+  border: 1px solid var(--border-color);
+  padding: 0.25rem 0.6rem;
+  border-radius: 9999px;
+}
+
+.checkbox-group {
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  color: var(--text-main);
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+  margin-top: 0.2rem;
+  cursor: pointer;
+}
+
+.field-hint {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-top: 0.25rem;
+  display: block;
 }
 
 .summary-footer {
@@ -697,25 +800,37 @@ body {
   padding: 1.5rem;
 }
 
-/* MODAL */
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 200;
-  backdrop-filter: blur(4px);
+/* NATIVE DIALOG MODAL */
+dialog.app-dialog {
+  display: none;
 }
 
-.modal-dialog {
+dialog.app-dialog[open] {
+  display: block;
+}
+
+dialog.app-dialog:modal {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  max-width: 440px;
+  max-width: 460px;
   width: 90%;
   padding: 1.5rem;
+  color: var(--text-main);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+  margin: auto;
+  overscroll-behavior: contain;
+}
+
+dialog.app-dialog::backdrop {
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  overscroll-behavior: contain;
+}
+
+.modal-dialog-inner {
+  display: flex;
+  flex-direction: column;
 }
 
 .modal-header {
@@ -736,6 +851,12 @@ body {
   color: var(--text-muted);
   font-size: 1.5rem;
   cursor: pointer;
+  padding: 0 0.25rem;
+  line-height: 1;
+}
+
+.btn-close:hover {
+  color: var(--text-main);
 }
 
 .form-group {

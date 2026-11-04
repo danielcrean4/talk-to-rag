@@ -6,6 +6,12 @@
   const state = {
     token: localStorage.getItem('talk_to_rag_token') || null,
     user: JSON.parse(localStorage.getItem('talk_to_rag_user') || 'null'),
+    settings: JSON.parse(localStorage.getItem('talk_to_rag_settings') || JSON.stringify({
+      mode: 'hybrid',
+      limit: 20,
+      expand: false,
+      cutoff: 0.7,
+    })),
     sources: [],
     notebooks: [],
     selectedNotebookId: 'all',
@@ -54,6 +60,50 @@
     return await response.json();
   }
 
+  // --- Source File URL Helper ---
+  function getSourceFileUrl(sourceId, pageNumber = null, snippet = null) {
+    let url = `/api/sources/${sourceId}/file?token=${encodeURIComponent(state.token || '')}`;
+    if (pageNumber) {
+      url += `#page=${pageNumber}`;
+    } else if (snippet) {
+      const clean = snippet.replace(/<[^>]*>/g, '').trim().slice(0, 80);
+      if (clean) {
+        url += `#:~:text=${encodeURIComponent(clean)}`;
+      }
+    }
+    return url;
+  }
+
+  // --- Native Dialog Light Dismiss Fallback ---
+  function setupDialogLightDismiss(dialogEl) {
+    if (!dialogEl) return;
+    if (!('closedBy' in HTMLDialogElement.prototype)) {
+      dialogEl.addEventListener('click', (event) => {
+        if (event.target !== dialogEl) return;
+        const rect = dialogEl.getBoundingClientRect();
+        const isInside = (
+          rect.top <= event.clientY &&
+          event.clientY <= rect.top + rect.height &&
+          rect.left <= event.clientX &&
+          event.clientX <= rect.left + rect.width
+        );
+        if (!isInside) dialogEl.close();
+      });
+    }
+  }
+
+  function openModal(dialogEl) {
+    if (dialogEl && typeof dialogEl.showModal === 'function') {
+      dialogEl.showModal();
+    }
+  }
+
+  function closeModal(dialogEl) {
+    if (dialogEl && typeof dialogEl.close === 'function') {
+      dialogEl.close();
+    }
+  }
+
   // --- DOM Elements ---
   const el = {
     // Navigation
@@ -63,6 +113,7 @@
     userBadge: document.getElementById('userBadge'),
     userEmailDisplay: document.getElementById('userEmailDisplay'),
     signOutBtn: document.getElementById('signOutBtn'),
+    openSettingsBtn: document.getElementById('openSettingsBtn'),
 
     // Modals
     authModal: document.getElementById('authModal'),
@@ -76,7 +127,6 @@
     authErrorMsg: document.getElementById('authErrorMsg'),
     authToggleText: document.getElementById('authToggleText'),
     authToggleLink: document.getElementById('authToggleLink'),
-    quickRegisterBtn: document.getElementById('quickRegisterBtn'),
 
     notebookModal: document.getElementById('notebookModal'),
     closeNotebookModalBtn: document.getElementById('closeNotebookModalBtn'),
@@ -84,6 +134,15 @@
     notebookDescInput: document.getElementById('notebookDescInput'),
     notebookErrorMsg: document.getElementById('notebookErrorMsg'),
     createNotebookSubmitBtn: document.getElementById('createNotebookSubmitBtn'),
+
+    settingsModal: document.getElementById('settingsModal'),
+    closeSettingsModalBtn: document.getElementById('closeSettingsModalBtn'),
+    settingsModeSelect: document.getElementById('settingsModeSelect'),
+    settingsLimitInput: document.getElementById('settingsLimitInput'),
+    settingsExpandCheckbox: document.getElementById('settingsExpandCheckbox'),
+    settingsCutoffInput: document.getElementById('settingsCutoffInput'),
+    saveSettingsBtn: document.getElementById('saveSettingsBtn'),
+    settingsSummaryPill: document.getElementById('settingsSummaryPill'),
 
     // Sources View
     refreshSourcesBtn: document.getElementById('refreshSourcesBtn'),
@@ -100,9 +159,7 @@
     searchInput: document.getElementById('searchInput'),
     voiceSearchBtn: document.getElementById('voiceSearchBtn'),
     searchSubmitBtn: document.getElementById('searchSubmitBtn'),
-    searchModeSelect: document.getElementById('searchModeSelect'),
     searchNotebookSelect: document.getElementById('searchNotebookSelect'),
-    expandQueryCheckbox: document.getElementById('expandQueryCheckbox'),
     summarySection: document.getElementById('summarySection'),
     summaryAnswer: document.getElementById('summaryAnswer'),
     summaryCitationsList: document.getElementById('summaryCitationsList'),
@@ -151,7 +208,12 @@
       el.authToggleText.textContent = 'Already have an account?';
       el.authToggleLink.textContent = 'Sign In';
     }
-    el.authModal.style.display = show ? 'flex' : 'none';
+    if (show) {
+      openModal(el.authModal);
+      el.authEmail.focus();
+    } else {
+      closeModal(el.authModal);
+    }
   }
 
   async function handleAuthSubmit() {
@@ -348,12 +410,16 @@
         retryHtml = `<button class="btn-retry btn-sm" onclick="window.retrySource('${src.id}')">🔄 Retry</button>`;
       }
 
+      const fileUrl = getSourceFileUrl(src.id);
+
       card.innerHTML = `
         <div class="source-card-header">
           <div class="source-type-icon">${icon}</div>
           <div class="source-header-meta">
-            <h4 class="source-title" title="${escapeHtml(src.title)}">${escapeHtml(src.title)}</h4>
-            <span class="source-filename">${escapeHtml(src.fileName)}</span>
+            <h4 class="source-title" title="${escapeHtml(src.title)}">
+              <a href="${fileUrl}" target="_blank" rel="noopener noreferrer" class="source-file-link" title="Open ${escapeHtml(src.fileName)} in new tab">${escapeHtml(src.title)}</a>
+            </h4>
+            <a href="${fileUrl}" target="_blank" rel="noopener noreferrer" class="source-filename-link" title="Open ${escapeHtml(src.fileName)} in new tab">${escapeHtml(src.fileName)} ↗</a>
           </div>
           ${statusBadge}
         </div>
@@ -472,9 +538,10 @@
     el.searchSubmitBtn.textContent = 'Searching...';
     el.summarySection.style.display = 'none';
 
-    const mode = el.searchModeSelect.value;
+    const mode = state.settings.mode || 'hybrid';
     const notebookId = el.searchNotebookSelect.value;
-    const expand = el.expandQueryCheckbox.checked;
+    const expand = !!state.settings.expand;
+    const limit = state.settings.limit || 20;
 
     const payload = {
       query,
@@ -482,7 +549,7 @@
       expand,
       notebookIds: notebookId ? [notebookId] : null,
       conversationId: state.currentConversationId || null,
-      limit: 20
+      limit
     };
 
     try {
@@ -522,19 +589,22 @@
       groupEl.className = 'passage-group';
 
       const fileIcon = getFileIcon(group.source.contentType, group.source.title);
+      const groupFileUrl = getSourceFileUrl(group.source.id);
 
       groupEl.innerHTML = `
         <div class="group-header">
-          <span class="group-icon">${fileIcon}</span>
-          <span class="group-title">${escapeHtml(group.source.title)}</span>
+          <a href="${groupFileUrl}" target="_blank" rel="noopener noreferrer" class="group-source-link" title="Open ${escapeHtml(group.source.title)} in new tab">
+            <span class="group-icon">${fileIcon}</span>
+            <span class="group-title">${escapeHtml(group.source.title)} ↗</span>
+          </a>
           <span class="group-count">${group.passages.length} ${group.passages.length === 1 ? 'passage' : 'passages'}</span>
         </div>
         <div class="group-passages">
           ${group.passages.map(p => {
             const citNum = p.number;
-            const pageBadge = p.pageLabel 
-              ? `<span class="badge-page">Page ${escapeHtml(p.pageLabel)}</span>`
-              : `<span class="badge-page">Page ${p.pageNumber}</span>`;
+            const pageUrl = getSourceFileUrl(group.source.id, p.pageNumber, p.snippet);
+            const pageLabel = p.pageLabel ? escapeHtml(p.pageLabel) : p.pageNumber;
+            const pageBadge = `<a href="${pageUrl}" target="_blank" rel="noopener noreferrer" class="badge-page-link" title="Open ${escapeHtml(group.source.title)} at page ${p.pageNumber} in new tab">Page ${pageLabel} ↗</a>`;
             const sectionBadge = p.section ? `<span class="badge-section">${escapeHtml(p.section)}</span>` : '';
             const matchBadges = (p.matchedBy || []).map(m => `<span class="badge-match match-${m}">${m}</span>`).join(' ');
 
@@ -867,12 +937,39 @@
     ]);
   }
 
+  // --- Settings UI ---
+  function updateSettingsUI() {
+    el.settingsModeSelect.value = state.settings.mode || 'hybrid';
+    el.settingsLimitInput.value = state.settings.limit || '20';
+    el.settingsExpandCheckbox.checked = !!state.settings.expand;
+    el.settingsCutoffInput.value = state.settings.cutoff || '0.7';
+
+    const modeName = state.settings.mode.charAt(0).toUpperCase() + state.settings.mode.slice(1);
+    const expandNote = state.settings.expand ? ' + Expansion' : '';
+    el.settingsSummaryPill.textContent = `${modeName}${expandNote} • Top ${state.settings.limit}`;
+  }
+
+  function handleSaveSettings() {
+    state.settings.mode = el.settingsModeSelect.value;
+    state.settings.limit = parseInt(el.settingsLimitInput.value, 10) || 20;
+    state.settings.expand = el.settingsExpandCheckbox.checked;
+    state.settings.cutoff = parseFloat(el.settingsCutoffInput.value) || 0.7;
+    localStorage.setItem('talk_to_rag_settings', JSON.stringify(state.settings));
+    updateSettingsUI();
+    closeModal(el.settingsModal);
+  }
+
   // --- Event Listeners Setup ---
   function setupEventListeners() {
     // Navigation
     el.tabs.forEach(tab => {
       tab.addEventListener('click', () => switchTab(tab.dataset.view));
     });
+
+    // Dialog light dismiss fallbacks
+    setupDialogLightDismiss(el.authModal);
+    setupDialogLightDismiss(el.notebookModal);
+    setupDialogLightDismiss(el.settingsModal);
 
     // Auth
     el.openAuthBtn.addEventListener('click', () => showAuthModal(true, 'login'));
@@ -884,26 +981,27 @@
       showAuthModal(true, authMode === 'login' ? 'register' : 'login');
     });
 
-    el.quickRegisterBtn.addEventListener('click', () => {
-      el.authEmail.value = 'dan@test.com';
-      el.authDisplayName.value = 'Dan';
-      el.authPassword.value = 'Secret123!';
-      handleAuthSubmit();
-    });
-
     // Enter key inside auth modal
     el.authPassword.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') handleAuthSubmit();
     });
 
+    // Settings
+    el.openSettingsBtn.addEventListener('click', () => {
+      updateSettingsUI();
+      openModal(el.settingsModal);
+    });
+    el.closeSettingsModalBtn.addEventListener('click', () => closeModal(el.settingsModal));
+    el.saveSettingsBtn.addEventListener('click', handleSaveSettings);
+
     // Notebook modal
     el.newNotebookBtn.addEventListener('click', () => {
-      el.notebookModal.style.display = 'flex';
       el.notebookErrorMsg.style.display = 'none';
+      openModal(el.notebookModal);
       el.notebookNameInput.focus();
     });
     el.closeNotebookModalBtn.addEventListener('click', () => {
-      el.notebookModal.style.display = 'none';
+      closeModal(el.notebookModal);
     });
     el.createNotebookSubmitBtn.addEventListener('click', handleCreateNotebook);
     el.notebookNameInput.addEventListener('keydown', (e) => {
@@ -951,17 +1049,12 @@
 
     // History
     el.refreshHistoryBtn.addEventListener('click', loadHistory);
-
-    // Close modals on clicking backdrop
-    window.addEventListener('click', (e) => {
-      if (e.target === el.authModal) showAuthModal(false);
-      if (e.target === el.notebookModal) el.notebookModal.style.display = 'none';
-    });
   }
 
   // --- Initialize App ---
   async function init() {
     setupEventListeners();
+    updateSettingsUI();
     initSpeechRecognition();
     updateAuthUI();
 

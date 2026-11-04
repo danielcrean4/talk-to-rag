@@ -15,3 +15,8 @@ public sealed record SourceDto(
     string? FailureReason,
     int ChunkCount,
     DateTimeOffset CreatedAtUtc);
+
+public sealed record SourceFileResponse(
+    Stream Stream,
+    string ContentType,
+    string FileName);

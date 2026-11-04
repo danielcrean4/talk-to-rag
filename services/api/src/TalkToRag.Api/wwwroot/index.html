@@ -36,6 +36,7 @@
 
       <!-- User Authentication Controls -->
       <div class="user-session" id="userSession">
+        <button class="btn-ghost btn-sm" id="openSettingsBtn" title="Search & Retrieval Settings">⚙️ Settings</button>
         <div class="user-badge" id="userBadge" style="display: none;">
           <span class="avatar">👤</span>
           <span class="user-email" id="userEmailDisplay"></span>
@@ -107,24 +108,13 @@
           <!-- Search Options Bar -->
           <div class="search-options">
             <div class="option-item">
-              <label for="searchModeSelect">Retrieval Mode:</label>
-              <select id="searchModeSelect">
-                <option value="hybrid" selected>Hybrid (FTS + Vector RRF)</option>
-                <option value="semantic">Semantic (Meaning / HNSW)</option>
-                <option value="keyword">Keyword (Full-Text Search)</option>
-              </select>
-            </div>
-
-            <div class="option-item">
               <label for="searchNotebookSelect">Scope:</label>
               <select id="searchNotebookSelect">
                 <option value="">All Ready Sources</option>
               </select>
             </div>
-
-            <div class="option-item checkbox-item">
-              <input type="checkbox" id="expandQueryCheckbox">
-              <label for="expandQueryCheckbox" title="Uses local-small chat model to rewrite query into 2-3 retrieval terms">Query Expansion</label>
+            <div class="option-item">
+              <span class="active-settings-pill" id="settingsSummaryPill" title="Configured in Settings">Mode: Hybrid</span>
             </div>
           </div>
         </div>
@@ -185,11 +175,11 @@
     </main>
 
     <!-- Sign In / Register Modal -->
-    <div class="modal-backdrop" id="authModal" style="display: none;">
-      <div class="modal-dialog">
+    <dialog class="app-dialog" id="authModal" closedby="any" aria-labelledby="authModalTitle">
+      <div class="modal-dialog-inner">
         <div class="modal-header">
           <h3 id="authModalTitle">Sign In to talk-to-rag</h3>
-          <button class="btn-close" id="closeAuthModalBtn">&times;</button>
+          <button class="btn-close" id="closeAuthModalBtn" type="button" aria-label="Close dialog">&times;</button>
         </div>
         <div class="modal-body">
           <div class="form-group">
@@ -212,20 +202,16 @@
             <span id="authToggleText">Need an account?</span>
             <a href="#" id="authToggleLink">Register</a>
           </div>
-
-          <div class="quick-fill">
-            <button class="btn-ghost btn-sm" id="quickRegisterBtn">⚡ Quick Register / Demo User</button>
-          </div>
         </div>
       </div>
-    </div>
+    </dialog>
 
     <!-- Create Notebook Modal -->
-    <div class="modal-backdrop" id="notebookModal" style="display: none;">
-      <div class="modal-dialog">
+    <dialog class="app-dialog" id="notebookModal" closedby="any" aria-labelledby="notebookModalTitle">
+      <div class="modal-dialog-inner">
         <div class="modal-header">
-          <h3>Create New Notebook</h3>
-          <button class="btn-close" id="closeNotebookModalBtn">&times;</button>
+          <h3 id="notebookModalTitle">Create New Notebook</h3>
+          <button class="btn-close" id="closeNotebookModalBtn" type="button" aria-label="Close dialog">&times;</button>
         </div>
         <div class="modal-body">
           <div class="form-group">
@@ -240,7 +226,48 @@
           <button class="btn-primary btn-block" id="createNotebookSubmitBtn">Create Notebook</button>
         </div>
       </div>
-    </div>
+    </dialog>
+
+    <!-- Settings Modal -->
+    <dialog class="app-dialog" id="settingsModal" closedby="any" aria-labelledby="settingsModalTitle">
+      <div class="modal-dialog-inner">
+        <div class="modal-header">
+          <h3 id="settingsModalTitle">Search & Retrieval Settings</h3>
+          <button class="btn-close" id="closeSettingsModalBtn" type="button" aria-label="Close dialog">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="settingsModeSelect">Retrieval Mode</label>
+            <select id="settingsModeSelect">
+              <option value="hybrid" selected>Hybrid (FTS + Vector RRF)</option>
+              <option value="semantic">Semantic (Meaning / HNSW)</option>
+              <option value="keyword">Keyword (Full-Text Search)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="settingsLimitInput">Max Passages (Limit)</label>
+            <select id="settingsLimitInput">
+              <option value="5">5 passages</option>
+              <option value="10">10 passages</option>
+              <option value="20" selected>20 passages</option>
+              <option value="50">50 passages</option>
+            </select>
+          </div>
+          <div class="form-group checkbox-group">
+            <label class="checkbox-label" for="settingsExpandCheckbox">
+              <input type="checkbox" id="settingsExpandCheckbox">
+              <span>Query Expansion (generate 2-3 alternative queries using local chat model)</span>
+            </label>
+          </div>
+          <div class="form-group">
+            <label for="settingsCutoffInput">Distance Cutoff (0.1 - 1.5, default 0.7)</label>
+            <input type="number" id="settingsCutoffInput" min="0.1" max="1.5" step="0.05" value="0.7">
+            <span class="field-hint">Passages with distance above this threshold are pruned.</span>
+          </div>
+          <button class="btn-primary btn-block" id="saveSettingsBtn">Save Settings</button>
+        </div>
+      </div>
+    </dialog>
 
   </div>
 

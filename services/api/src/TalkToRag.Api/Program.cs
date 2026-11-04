@@ -36,6 +36,19 @@ builder.Services
             IssuerSigningKey = jwt.CreateSigningKey(),
             NameClaimType = JwtRegisteredClaimNames.Name,
         };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                if (string.IsNullOrEmpty(context.Token) &&
+                    context.Request.Query.TryGetValue("token", out var token) &&
+                    !string.IsNullOrEmpty(token))
+                {
+                    context.Token = token;
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
 builder.Services.AddAuthorization();
 

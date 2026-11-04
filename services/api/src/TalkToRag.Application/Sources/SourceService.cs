@@ -100,6 +100,19 @@ public sealed class SourceService(
         return source;
     }
 
+    public async Task<SourceFileResponse> GetFileAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var userId = currentUser.UserId;
+        var source = await sourceRepository.FindEntityByIdForUserAsync(id, userId, cancellationToken);
+        if (source is null)
+        {
+            throw new NotFoundException($"Source '{id}' not found.");
+        }
+
+        var stream = await blobStorage.OpenReadAsync(source.BlobKey, cancellationToken);
+        return new SourceFileResponse(stream, source.ContentType, source.FileName);
+    }
+
     public async Task RetryAsync(Guid id, CancellationToken cancellationToken)
     {
         var userId = currentUser.UserId;

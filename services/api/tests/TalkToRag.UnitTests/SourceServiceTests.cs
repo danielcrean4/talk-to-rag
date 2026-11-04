@@ -204,6 +204,60 @@ public class SourceServiceTests
     }
 
     [Fact]
+    public async Task GetFileAsync_ReturnsStreamAndMetadata_WhenUserOwnsSource()
+    {
+        var service = CreateService();
+        var sourceId = Guid.NewGuid();
+        var content = Encoding.UTF8.GetBytes("%PDF-1.4 sample content");
+        var blobKey = $"sources/{sourceId:N}.pdf";
+        _storage.Written[blobKey] = content;
+
+        _repository.All.Add(new Source
+        {
+            Id = sourceId,
+            UserId = _currentUser.UserId,
+            Title = "CS229 Notes",
+            FileName = "cs229-notes.pdf",
+            ContentType = "application/pdf",
+            SizeBytes = content.Length,
+            BlobKey = blobKey,
+            Status = SourceStatus.Ready,
+            CreatedAtUtc = _clock.GetUtcNow()
+        });
+
+        var result = await service.GetFileAsync(sourceId, default);
+
+        Assert.NotNull(result);
+        Assert.Equal("cs229-notes.pdf", result.FileName);
+        Assert.Equal("application/pdf", result.ContentType);
+        using var ms = new MemoryStream();
+        await result.Stream.CopyToAsync(ms);
+        Assert.Equal(content, ms.ToArray());
+    }
+
+    [Fact]
+    public async Task GetFileAsync_ThrowsNotFoundException_WhenSourceBelongsToDifferentUser()
+    {
+        var service = CreateService();
+        var sourceId = Guid.NewGuid();
+        _storage.Written[$"sources/{sourceId:N}.pdf"] = [1, 2, 3];
+
+        _repository.All.Add(new Source
+        {
+            Id = sourceId,
+            UserId = Guid.NewGuid(), // other user
+            Title = "Other's Notes",
+            FileName = "other.pdf",
+            ContentType = "application/pdf",
+            BlobKey = $"sources/{sourceId:N}.pdf",
+            Status = SourceStatus.Ready,
+            CreatedAtUtc = _clock.GetUtcNow()
+        });
+
+        await Assert.ThrowsAsync<NotFoundException>(() => service.GetFileAsync(sourceId, default));
+    }
+
+    [Fact]
     public async Task ListAsync_ReturnsOnlySourcesForCurrentCaller()
     {
         var service = CreateService();
