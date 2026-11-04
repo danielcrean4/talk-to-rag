@@ -109,6 +109,36 @@ public sealed class HttpAiClient(HttpClient httpClient) : IAiClient
         return await response.Content.ReadAsStreamAsync(cancellationToken);
     }
 
+    public async Task<RouteIntentResponseDto> RouteIntentAsync(RouteIntentRequestDto request, CancellationToken cancellationToken = default)
+    {
+        var payload = new
+        {
+            transcript = request.Transcript,
+            screen_context = request.ScreenContext is null ? null : new
+            {
+                source_id = request.ScreenContext.SourceId?.ToString(),
+                source_title = request.ScreenContext.SourceTitle,
+                current_page = request.ScreenContext.CurrentPage,
+                total_pages = request.ScreenContext.TotalPages,
+                selected_text = request.ScreenContext.SelectedText,
+                active_view = request.ScreenContext.ActiveView
+            }
+        };
+
+        using var response = await httpClient.PostAsJsonAsync("/v1/speech/route-intent", payload, JsonOptions, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        using var doc = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken: cancellationToken);
+        var root = doc!.RootElement;
+        return new RouteIntentResponseDto(
+            root.GetProperty("intent").GetString() ?? "search",
+            root.TryGetProperty("topic", out var topicEl) && topicEl.ValueKind == JsonValueKind.String ? topicEl.GetString() : null,
+            root.TryGetProperty("query", out var queryEl) && queryEl.ValueKind == JsonValueKind.String ? queryEl.GetString() : null,
+            root.GetProperty("route").GetString() ?? "fast_path",
+            root.GetProperty("confidence").GetDouble()
+        );
+    }
+
     private static string? TryExtractErrorMessage(string json)
     {
         try

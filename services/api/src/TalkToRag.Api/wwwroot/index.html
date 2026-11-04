@@ -119,6 +119,21 @@
           </div>
         </div>
 
+        <!-- Voice Reader & Pull-Up Topic Card -->
+        <div class="voice-command-section" id="voiceCommandSection" style="display: none;">
+          <div class="voice-card">
+            <div class="voice-header">
+              <div class="voice-title-wrap">
+                <span class="voice-icon">🎙️</span>
+                <strong id="voiceCommandTitle">Voice Reader Command</strong>
+              </div>
+              <button class="btn-ghost btn-sm" id="dismissVoiceCmdBtn" title="Dismiss">✕</button>
+            </div>
+            <p id="voiceCommandPrompt" class="voice-prompt"></p>
+            <div id="voiceCandidatesList" class="voice-candidates-grid"></div>
+          </div>
+        </div>
+
         <!-- AI Summary Card (Optional / Generated on demand) -->
         <div class="summary-section" id="summarySection" style="display: none;">
           <div class="summary-card">

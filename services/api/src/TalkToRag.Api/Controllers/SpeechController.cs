@@ -2,11 +2,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using TalkToRag.Application.Common.Exceptions;
+using TalkToRag.Application.Common.Interfaces;
 using TalkToRag.Application.Speech;
 
 namespace TalkToRag.Api.Controllers;
 
 public sealed record SynthesizeSpeechRequest(string Text);
+public sealed record RouteVoiceCommandRequest(string Transcript, ScreenContextDto? ScreenContext);
+public sealed record PullUpVoiceCommandRequest(string Topic, Guid? NotebookId = null);
 
 [Authorize]
 [ApiController]
@@ -39,5 +42,25 @@ public sealed class SpeechController(ISpeechService speechService) : ControllerB
     {
         var stream = await speechService.SynthesizeAsync(request.Text, cancellationToken);
         return File(stream, "audio/wav");
+    }
+
+    [HttpPost("route")]
+    [ProducesResponseType<RouteIntentResponseDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<RouteIntentResponseDto>> RouteCommand([FromBody] RouteVoiceCommandRequest request, CancellationToken cancellationToken)
+    {
+        var result = await speechService.RouteIntentAsync(request.Transcript, request.ScreenContext, cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpPost("pull-up")]
+    [ProducesResponseType<PullUpResponseDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<PullUpResponseDto>> PullUpTopic([FromBody] PullUpVoiceCommandRequest request, CancellationToken cancellationToken)
+    {
+        var result = await speechService.PullUpTopicAsync(request.Topic, request.NotebookId, cancellationToken);
+        return Ok(result);
     }
 }

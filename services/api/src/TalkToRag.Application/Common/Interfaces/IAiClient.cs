@@ -46,6 +46,25 @@ public sealed record AnswerResponse(
     string Answer,
     IReadOnlyList<int> Cited);
 
+public sealed record ScreenContextDto(
+    Guid? SourceId = null,
+    string? SourceTitle = null,
+    int? CurrentPage = null,
+    int? TotalPages = null,
+    string? SelectedText = null,
+    string? ActiveView = null);
+
+public sealed record RouteIntentRequestDto(
+    string Transcript,
+    ScreenContextDto? ScreenContext = null);
+
+public sealed record RouteIntentResponseDto(
+    string Intent,
+    string? Topic,
+    string? Query,
+    string Route,
+    double Confidence);
+
 public interface IAiClient
 {
     Task<IngestSourceResponse> IngestSourceAsync(IngestSourceRequest request, CancellationToken cancellationToken = default);
@@ -54,4 +73,5 @@ public interface IAiClient
     IAsyncEnumerable<string> StreamAnswerAsync(AnswerRequest request, CancellationToken cancellationToken = default);
     Task<string> TranscribeAsync(string blobKey, CancellationToken cancellationToken = default);
     Task<Stream> SynthesizeAsync(string text, CancellationToken cancellationToken = default);
+    Task<RouteIntentResponseDto> RouteIntentAsync(RouteIntentRequestDto request, CancellationToken cancellationToken = default);
 }

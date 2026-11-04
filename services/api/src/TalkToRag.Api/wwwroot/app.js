@@ -170,6 +170,13 @@
     generateSummaryBtn: document.getElementById('generateSummaryBtn'),
     passagesGroups: document.getElementById('passagesGroups'),
 
+    // Voice Command Section
+    voiceCommandSection: document.getElementById('voiceCommandSection'),
+    voiceCommandTitle: document.getElementById('voiceCommandTitle'),
+    voiceCommandPrompt: document.getElementById('voiceCommandPrompt'),
+    voiceCandidatesList: document.getElementById('voiceCandidatesList'),
+    dismissVoiceCmdBtn: document.getElementById('dismissVoiceCmdBtn'),
+
     // History View
     refreshHistoryBtn: document.getElementById('refreshHistoryBtn'),
     historyList: document.getElementById('historyList'),
@@ -807,6 +814,7 @@
           if (result && result.text) {
             el.searchInput.value = result.text;
             el.searchInput.focus();
+            await executeVoiceRouting(result.text);
           }
         } catch (err) {
           alert(`Local Whisper transcription failed: ${err.message}`);
@@ -885,6 +893,108 @@
       state.isSpeaking = false;
       el.speakSummaryBtn.textContent = '🔊 Read Aloud';
       alert(`Local TTS playback failed: ${err.message}`);
+    }
+  }
+
+  // --- Voice Command Router Execution ---
+  async function executeVoiceRouting(transcript) {
+    try {
+      const routeRes = await apiFetch('/api/speech/route', {
+        method: 'POST',
+        body: JSON.stringify({
+          transcript: transcript,
+          screenContext: {
+            activeView: 'search',
+          }
+        })
+      });
+
+      if (!routeRes) return;
+
+      if (routeRes.intent === 'pull_up') {
+        const topic = routeRes.topic || transcript;
+        await handlePullUpTopic(topic);
+      } else if (routeRes.intent === 'summarize_page') {
+        if (state.currentResults && el.generateSummaryBtn) {
+          handleGenerateSummary();
+        }
+      } else if (routeRes.intent === 'read_this') {
+        toggleSpeechSummary();
+      } else if (routeRes.intent === 'search') {
+        if (routeRes.query) {
+          el.searchInput.value = routeRes.query;
+        }
+        handleSearch();
+      }
+    } catch (err) {
+      console.warn('Voice command routing error:', err);
+    }
+  }
+
+  async function handlePullUpTopic(topic) {
+    try {
+      const pullRes = await apiFetch('/api/speech/pull-up', {
+        method: 'POST',
+        body: JSON.stringify({
+          topic: topic,
+          notebookId: state.selectedNotebookId !== 'all' ? state.selectedNotebookId : null
+        })
+      });
+
+      if (!pullRes) return;
+
+      el.voiceCommandTitle.textContent = `Pull Up: "${escapeHtml(pullRes.topic)}"`;
+      el.voiceCommandPrompt.textContent = pullRes.spokenPrompt;
+
+      if (pullRes.candidates && pullRes.candidates.length > 0) {
+        el.voiceCandidatesList.innerHTML = pullRes.candidates.map(c => `
+          <button class="voice-candidate-btn" onclick="window.openVoiceCandidate('${c.sourceId}', ${c.pageNumber})">
+            <div class="voice-candidate-badge">Option [${c.index}] · Page ${c.pageNumber}</div>
+            <div class="voice-candidate-title">${escapeHtml(c.sourceTitle)}</div>
+            <div class="voice-candidate-snippet">${c.snippet}</div>
+          </button>
+        `).join('');
+      } else {
+        el.voiceCandidatesList.innerHTML = `<div class="empty-state">No matching passages found.</div>`;
+      }
+
+      el.voiceCommandSection.style.display = 'block';
+      el.voiceCommandSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      // Speak prompt aloud using local TTS
+      if (pullRes.spokenPrompt) {
+        playSynthesizedAudio(pullRes.spokenPrompt);
+      }
+    } catch (err) {
+      alert(`Pull-up failed: ${err.message}`);
+    }
+  }
+
+  window.openVoiceCandidate = (sourceId, pageNumber) => {
+    const url = getSourceFileUrl(sourceId, pageNumber);
+    window.open(url, '_blank');
+  };
+
+  async function playSynthesizedAudio(text) {
+    try {
+      const response = await fetch('/api/speech/synthesize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${state.token}`
+        },
+        body: JSON.stringify({ text })
+      });
+      if (!response.ok) return;
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      if (currentAudioPlayer) {
+        currentAudioPlayer.pause();
+      }
+      currentAudioPlayer = new Audio(audioUrl);
+      currentAudioPlayer.play();
+    } catch (e) {
+      console.warn('Audio playback error:', e);
     }
   }
 
@@ -1118,8 +1228,17 @@
       if (e.key === 'Enter') handleSearch();
     });
 
-    // Voice recognition
+    // Voice recognition & commands
     el.voiceSearchBtn.addEventListener('click', toggleVoiceRecording);
+    if (el.dismissVoiceCmdBtn) {
+      el.dismissVoiceCmdBtn.addEventListener('click', () => {
+        el.voiceCommandSection.style.display = 'none';
+        if (currentAudioPlayer) {
+          currentAudioPlayer.pause();
+          currentAudioPlayer = null;
+        }
+      });
+    }
 
     // Summary & Speech
     el.generateSummaryBtn.addEventListener('click', handleGenerateSummary);

@@ -392,5 +392,8 @@ public class SearchServiceTests
 
         public Task<Stream> SynthesizeAsync(string text, CancellationToken cancellationToken = default) =>
             Task.FromResult<Stream>(new MemoryStream([1, 2, 3]));
+
+        public Task<RouteIntentResponseDto> RouteIntentAsync(RouteIntentRequestDto request, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new RouteIntentResponseDto("search", null, request.Transcript, "fast_path", 1.0));
     }
 }

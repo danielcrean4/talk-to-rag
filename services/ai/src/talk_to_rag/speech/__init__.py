@@ -1,9 +1,11 @@
 import os
 from talk_to_rag.speech.adapters.fake import FakeSpeechToText, FakeTextToSpeech
 from talk_to_rag.speech.contracts import SpeechToText, TextToSpeech
+from talk_to_rag.speech.router import LayeredCommandRouter
 
 _stt_instance: SpeechToText | None = None
 _tts_instance: TextToSpeech | None = None
+_router_instance: LayeredCommandRouter | None = None
 
 
 def get_stt() -> SpeechToText:
@@ -28,3 +30,15 @@ def get_tts() -> TextToSpeech:
 def set_tts(instance: TextToSpeech | None) -> None:
     global _tts_instance
     _tts_instance = instance
+
+
+def get_router() -> LayeredCommandRouter:
+    global _router_instance
+    if _router_instance is not None:
+        return _router_instance
+    return LayeredCommandRouter()
+
+
+def set_router(instance: LayeredCommandRouter | None) -> None:
+    global _router_instance
+    _router_instance = instance

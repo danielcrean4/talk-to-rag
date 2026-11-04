@@ -433,6 +433,9 @@ public class SourceIngestionWorkerTests
 
         public Task<Stream> SynthesizeAsync(string text, CancellationToken cancellationToken = default) =>
             throw new NotImplementedException();
+
+        public Task<RouteIntentResponseDto> RouteIntentAsync(RouteIntentRequestDto request, CancellationToken cancellationToken = default) =>
+            throw new NotImplementedException();
     }
 
     private sealed class StubHttpMessageHandler(HttpStatusCode statusCode, string content) : HttpMessageHandler
