@@ -5,6 +5,7 @@ using TalkToRag.Application.Conversations;
 using TalkToRag.Application.Notebooks;
 using TalkToRag.Application.Search;
 using TalkToRag.Application.Sources;
+using TalkToRag.Application.Speech;
 using TalkToRag.Application.Tags;
 using TalkToRag.Domain.Entities;
 
@@ -22,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<ITagService, TagService>();
         services.AddScoped<ISearchService, SearchService>();
         services.AddScoped<IConversationService, ConversationService>();
+        services.AddScoped<ISpeechService, SpeechService>();
         return services;
     }
 }

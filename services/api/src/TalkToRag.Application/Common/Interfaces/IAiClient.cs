@@ -52,4 +52,6 @@ public interface IAiClient
     Task<ExpandQueryResponse> ExpandQueryAsync(ExpandQueryRequest request, CancellationToken cancellationToken = default);
     Task<AnswerResponse> GenerateAnswerAsync(AnswerRequest request, CancellationToken cancellationToken = default);
     IAsyncEnumerable<string> StreamAnswerAsync(AnswerRequest request, CancellationToken cancellationToken = default);
+    Task<string> TranscribeAsync(string blobKey, CancellationToken cancellationToken = default);
+    Task<Stream> SynthesizeAsync(string text, CancellationToken cancellationToken = default);
 }

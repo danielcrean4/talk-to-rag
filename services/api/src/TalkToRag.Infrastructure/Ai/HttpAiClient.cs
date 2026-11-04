@@ -91,6 +91,24 @@ public sealed class HttpAiClient(HttpClient httpClient) : IAiClient
         }
     }
 
+    public async Task<string> TranscribeAsync(string blobKey, CancellationToken cancellationToken = default)
+    {
+        var payload = new { blob_key = blobKey };
+        using var response = await httpClient.PostAsJsonAsync("/v1/speech/transcribe", payload, JsonOptions, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        using var doc = await response.Content.ReadFromJsonAsync<JsonDocument>(cancellationToken: cancellationToken);
+        return doc?.RootElement.GetProperty("text").GetString() ?? "";
+    }
+
+    public async Task<Stream> SynthesizeAsync(string text, CancellationToken cancellationToken = default)
+    {
+        var payload = new { text };
+        var response = await httpClient.PostAsJsonAsync("/v1/speech/synthesize", payload, JsonOptions, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsStreamAsync(cancellationToken);
+    }
+
     private static string? TryExtractErrorMessage(string json)
     {
         try

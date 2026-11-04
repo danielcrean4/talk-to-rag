@@ -386,5 +386,11 @@ public class SearchServiceTests
 
         public Task<IngestSourceResponse> IngestSourceAsync(IngestSourceRequest request, CancellationToken cancellationToken = default) =>
             throw new NotImplementedException();
+
+        public Task<string> TranscribeAsync(string blobKey, CancellationToken cancellationToken = default) =>
+            Task.FromResult("what is the normal equation");
+
+        public Task<Stream> SynthesizeAsync(string text, CancellationToken cancellationToken = default) =>
+            Task.FromResult<Stream>(new MemoryStream([1, 2, 3]));
     }
 }

@@ -755,82 +755,81 @@
     }
   };
 
-  // --- Voice / Speech Recognition (Hands-Free) ---
-  function initSpeechRecognition() {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      el.voiceSearchBtn.title = 'Speech Recognition not supported in this browser.';
-      el.voiceSearchBtn.style.opacity = '0.5';
-      return;
-    }
+  // --- Push-to-Talk via Local Whisper ---
+  let mediaRecorder = null;
+  let audioChunks = [];
 
-    const recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
-
-    recognition.onstart = () => {
-      state.isRecording = true;
-      el.voiceSearchBtn.classList.add('recording');
-      el.searchInput.placeholder = 'Listening to your question...';
-    };
-
-    recognition.onresult = (event) => {
-      let transcript = '';
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        transcript += event.results[i][0].transcript;
-      }
-      el.searchInput.value = transcript;
-    };
-
-    recognition.onerror = (event) => {
-      console.warn('Speech recognition error:', event.error);
-      stopRecording();
-    };
-
-    recognition.onend = () => {
-      stopRecording();
-      if (el.searchInput.value.trim().length > 0) {
-        handleSearch();
-      }
-    };
-
-    state.speechRecognition = recognition;
-  }
-
-  function toggleVoiceRecording() {
-    if (!state.speechRecognition) {
-      alert('Speech Recognition is not supported in this browser (use Chrome/Safari/Edge).');
-      return;
-    }
-
+  async function toggleVoiceRecording() {
     if (state.isRecording) {
-      state.speechRecognition.stop();
-      stopRecording();
-    } else {
-      try {
-        state.speechRecognition.start();
-      } catch (err) {
-        console.error('Speech recognition start failed:', err);
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
       }
-    }
-  }
-
-  function stopRecording() {
-    state.isRecording = false;
-    el.voiceSearchBtn.classList.remove('recording');
-    el.searchInput.placeholder = "Ask a question or search passages (e.g. 'what is the difference between TD and Monte Carlo?')";
-  }
-
-  // --- Text-to-Speech (Read Aloud) ---
-  function toggleSpeechSummary() {
-    if (!('speechSynthesis' in window)) {
-      alert('Text-to-speech synthesis not supported in this browser.');
       return;
     }
 
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert('Microphone access is not available in this browser context.');
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunks = [];
+      mediaRecorder = new MediaRecorder(stream);
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) audioChunks.push(e.data);
+      };
+
+      mediaRecorder.onstart = () => {
+        state.isRecording = true;
+        el.voiceSearchBtn.classList.add('recording');
+        el.searchInput.placeholder = 'Recording your question (click mic again to stop & transcribe)...';
+      };
+
+      mediaRecorder.onstop = async () => {
+        state.isRecording = false;
+        el.voiceSearchBtn.classList.remove('recording');
+        el.searchInput.placeholder = 'Transcribing with local Whisper...';
+
+        stream.getTracks().forEach(t => t.stop());
+
+        const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'question.webm');
+
+        try {
+          const result = await apiFetch('/api/speech/transcribe', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (result && result.text) {
+            el.searchInput.value = result.text;
+            el.searchInput.focus();
+          }
+        } catch (err) {
+          alert(`Local Whisper transcription failed: ${err.message}`);
+        } finally {
+          el.searchInput.placeholder = "Ask a question or search passages (e.g. 'what is the difference between TD and Monte Carlo?')";
+        }
+      };
+
+      mediaRecorder.start();
+    } catch (err) {
+      alert(`Could not start recording: ${err.message}`);
+    }
+  }
+
+  // --- Local Text-to-Speech (Read Aloud) ---
+  let currentAudioPlayer = null;
+
+  async function toggleSpeechSummary() {
     if (state.isSpeaking) {
-      window.speechSynthesis.cancel();
+      if (currentAudioPlayer) {
+        currentAudioPlayer.pause();
+        currentAudioPlayer = null;
+      }
       state.isSpeaking = false;
       el.speakSummaryBtn.textContent = '🔊 Read Aloud';
       return;
@@ -839,29 +838,54 @@
     const text = el.summaryAnswer.textContent || '';
     if (!text.trim()) return;
 
-    // Clean up citation brackets "[1]" before speaking so it sounds natural
-    const cleanSpokenText = text.replace(/\[\d+\]/g, '');
+    const cleanSpokenText = text.replace(/\[\d+\]/g, '').trim();
+    if (!cleanSpokenText) return;
 
-    const utterance = new SpeechSynthesisUtterance(cleanSpokenText);
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
+    el.speakSummaryBtn.textContent = '⏳ Synthesizing...';
+    try {
+      const response = await fetch('/api/speech/synthesize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${state.token}`
+        },
+        body: JSON.stringify({ text: cleanSpokenText })
+      });
 
-    utterance.onstart = () => {
-      state.isSpeaking = true;
-      el.speakSummaryBtn.textContent = '⏹️ Stop Reading';
-    };
+      if (!response.ok) {
+        throw new Error(`Synthesis failed: ${response.statusText}`);
+      }
 
-    utterance.onend = () => {
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      currentAudioPlayer = audio;
+
+      audio.onplay = () => {
+        state.isSpeaking = true;
+        el.speakSummaryBtn.textContent = '⏹️ Stop Reading';
+      };
+
+      audio.onended = () => {
+        state.isSpeaking = false;
+        el.speakSummaryBtn.textContent = '🔊 Read Aloud';
+        URL.revokeObjectURL(audioUrl);
+        currentAudioPlayer = null;
+      };
+
+      audio.onerror = () => {
+        state.isSpeaking = false;
+        el.speakSummaryBtn.textContent = '🔊 Read Aloud';
+        URL.revokeObjectURL(audioUrl);
+        currentAudioPlayer = null;
+      };
+
+      await audio.play();
+    } catch (err) {
       state.isSpeaking = false;
       el.speakSummaryBtn.textContent = '🔊 Read Aloud';
-    };
-
-    utterance.onerror = () => {
-      state.isSpeaking = false;
-      el.speakSummaryBtn.textContent = '🔊 Read Aloud';
-    };
-
-    window.speechSynthesis.speak(utterance);
+      alert(`Local TTS playback failed: ${err.message}`);
+    }
   }
 
   // --- History View ---
@@ -1109,7 +1133,6 @@
   async function init() {
     setupEventListeners();
     updateSettingsUI();
-    initSpeechRecognition();
     updateAuthUI();
 
     if (state.token) {

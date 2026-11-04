@@ -427,6 +427,12 @@ public class SourceIngestionWorkerTests
             await Task.Yield();
             yield break;
         }
+
+        public Task<string> TranscribeAsync(string blobKey, CancellationToken cancellationToken = default) =>
+            throw new NotImplementedException();
+
+        public Task<Stream> SynthesizeAsync(string text, CancellationToken cancellationToken = default) =>
+            throw new NotImplementedException();
     }
 
     private sealed class StubHttpMessageHandler(HttpStatusCode statusCode, string content) : HttpMessageHandler

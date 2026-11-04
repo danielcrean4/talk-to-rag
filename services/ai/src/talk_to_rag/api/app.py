@@ -5,7 +5,7 @@
 
 from fastapi import FastAPI
 
-from talk_to_rag.api.routes import health, ingestion, rag
+from talk_to_rag.api.routes import health, ingestion, rag, speech
 
 
 def create_app() -> FastAPI:
@@ -16,4 +16,5 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(ingestion.router)
     app.include_router(rag.router)
+    app.include_router(speech.router)
     return app
