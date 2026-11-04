@@ -15,6 +15,8 @@ public class SourceChunk
     public string? PageLabel { get; set; }
     public string? Section { get; set; }
     public int ChunkIndex { get; set; }
+    public string? EmbeddingModel { get; set; }
+    public int? TokenCount { get; set; }
     public required string Content { get; set; }
     public required float[] Embedding { get; set; }
 }

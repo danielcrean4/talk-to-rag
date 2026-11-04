@@ -43,6 +43,15 @@ public sealed class SourceService(
             throw new RequestValidationException("File exceeds 50 MB limit.");
         }
 
+        string? fileHash = null;
+        if (stream.CanSeek)
+        {
+            stream.Position = 0;
+            var hashBytes = await System.Security.Cryptography.SHA256.HashDataAsync(stream, cancellationToken);
+            fileHash = Convert.ToHexStringLower(hashBytes);
+            stream.Position = 0;
+        }
+
         var sourceId = Guid.CreateVersion7();
         var blobKey = $"sources/{sourceId:N}{extension.ToLowerInvariant()}";
 
@@ -72,6 +81,7 @@ public sealed class SourceService(
             ContentType = normalizedContentType,
             SizeBytes = sizeBytes,
             BlobKey = blobKey,
+            FileHash = fileHash,
             Status = SourceStatus.Pending,
             CreatedAtUtc = timeProvider.GetUtcNow()
         };

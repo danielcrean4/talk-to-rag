@@ -36,6 +36,8 @@ public class SourceServiceTests
         Assert.Equal("textbook.md", stored.FileName);
         Assert.Equal("text/markdown", stored.ContentType);
         Assert.Equal(content.Length, stored.SizeBytes);
+        Assert.NotNull(stored.FileHash);
+        Assert.Equal(64, stored.FileHash.Length);
         Assert.Equal(SourceStatus.Pending, stored.Status);
 
         // Blob saved

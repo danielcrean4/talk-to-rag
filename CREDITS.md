@@ -61,6 +61,7 @@ Weights are downloaded by each user with `ollama pull`; talk-to-rag does not red
 | [Gemma 3](https://ai.google.dev/gemma) 1B (`gemma3:1b`) | In use | [Gemma Terms of Use](https://ai.google.dev/gemma/terms) (not an open-source licence) | Default chat model (`local-small`) | Google DeepMind. Redistributing the weights would require passing on the Gemma Terms and Prohibited Use Policy. |
 | Gemma 3 4B (`gemma3:4b`) | Configured, not yet used | Gemma Terms of Use | `local-4b`, `remote-4b` | Google DeepMind |
 | [Phi-4-mini](https://huggingface.co/microsoft/Phi-4-mini-instruct) (`phi4-mini`) | Configured, not yet used | MIT | `local-phi` | © Microsoft Corporation |
+| [Llama 3.2](https://github.com/meta-llama/llama-models) 1B (`llama3.2:1b`) | Configured, alternative | [Llama 3.2 Community License](https://github.com/meta-llama/llama-models/blob/main/models/llama3_2/LICENSE) | `local-llama` | © Meta Platforms, Inc. |
 
 ## Development and test tools (not shipped)
 

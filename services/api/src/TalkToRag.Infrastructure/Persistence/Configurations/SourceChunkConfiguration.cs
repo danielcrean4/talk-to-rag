@@ -15,6 +15,7 @@ public class SourceChunkConfiguration : IEntityTypeConfiguration<SourceChunk>
     {
         builder.HasOne<Source>().WithMany(s => s.Chunks).HasForeignKey(c => c.SourceId).OnDelete(DeleteBehavior.Cascade);
         builder.HasIndex(c => new { c.SourceId, c.ChunkIndex }).IsUnique();
+        builder.Property(c => c.EmbeddingModel).HasMaxLength(100);
 
         // Semantic search: the domain keeps a plain float[]; only this layer knows it is a pgvector column.
         // HNSW is an approximate nearest-neighbour index; vector_cosine_ops makes it serve the <=> operator.

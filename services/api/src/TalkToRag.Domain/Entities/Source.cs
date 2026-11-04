@@ -14,6 +14,9 @@ public class Source
     public required string BlobKey { get; set; }
     public SourceStatus Status { get; set; } = SourceStatus.Pending;
     public string? FailureReason { get; set; }
+    public string? FileHash { get; set; }
+    public string? License { get; set; }
+    public string? SourceUrl { get; set; }
     public DateTimeOffset CreatedAtUtc { get; set; }
 
     public List<SourceChunk> Chunks { get; } = [];

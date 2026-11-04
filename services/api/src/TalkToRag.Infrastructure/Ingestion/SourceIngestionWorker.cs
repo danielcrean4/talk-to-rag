@@ -95,7 +95,8 @@ public sealed class SourceIngestionWorker(
                 Section = chunk.Section,
                 ChunkIndex = chunk.ChunkIndex,
                 Content = chunk.Content,
-                Embedding = chunk.Embedding
+                Embedding = chunk.Embedding,
+                EmbeddingModel = "nomic-embed-text"
             }).ToList();
 
             await repo.SaveChunksAsync(source.Id, chunks, cancellationToken);

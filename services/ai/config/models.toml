@@ -38,6 +38,12 @@ kind = "chat"
 name = "phi4-mini"
 options = { temperature = 0.2 }
 
+[models.local-llama]
+provider = "ollama"
+kind = "chat"
+name = "llama3.2:1b"
+options = { temperature = 0.2 }
+
 [models.local-embed]
 provider = "ollama"
 kind = "embed"

@@ -235,14 +235,27 @@ namespace TalkToRag.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("failure_reason");
 
+                    b.Property<string>("FileHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("file_hash");
+
                     b.Property<string>("FileName")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("file_name");
 
+                    b.Property<string>("License")
+                        .HasColumnType("text")
+                        .HasColumnName("license");
+
                     b.Property<long>("SizeBytes")
                         .HasColumnType("bigint")
                         .HasColumnName("size_bytes");
+
+                    b.Property<string>("SourceUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("source_url");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -268,6 +281,9 @@ namespace TalkToRag.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId", "CreatedAtUtc")
                         .HasDatabaseName("ix_sources_user_id_created_at_utc");
 
+                    b.HasIndex("UserId", "FileHash")
+                        .HasDatabaseName("ix_sources_user_id_file_hash");
+
                     b.ToTable("sources", (string)null);
                 });
 
@@ -292,6 +308,11 @@ namespace TalkToRag.Infrastructure.Persistence.Migrations
                         .HasColumnType("vector(768)")
                         .HasColumnName("embedding");
 
+                    b.Property<string>("EmbeddingModel")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("embedding_model");
+
                     b.Property<string>("PageLabel")
                         .HasColumnType("text")
                         .HasColumnName("page_label");
@@ -313,6 +334,10 @@ namespace TalkToRag.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("SourceId")
                         .HasColumnType("uuid")
                         .HasColumnName("source_id");
+
+                    b.Property<int?>("TokenCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("token_count");
 
                     b.HasKey("Id")
                         .HasName("pk_source_chunks");
