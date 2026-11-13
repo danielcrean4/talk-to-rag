@@ -1,5 +1,13 @@
 import { Source, SourceStatus } from '../api';
-import { anyWorking, failureNotice, formatBytes, inNotebook, reprocessLabel } from './source-list';
+import {
+  anyWorking,
+  failureNotice,
+  formatBytes,
+  inNotebook,
+  originHost,
+  reprocessLabel,
+  safeHttpUrl,
+} from './source-list';
 
 const source = (id: string, status: SourceStatus = 'Ready'): Source => ({
   id,
@@ -12,6 +20,8 @@ const source = (id: string, status: SourceStatus = 'Ready'): Source => ({
   chunkCount: 0,
   createdAtUtc: '2026-01-01T00:00:00Z',
   tagIds: [],
+  license: null,
+  sourceUrl: null,
 });
 
 describe('formatBytes', () => {
@@ -61,5 +71,40 @@ describe('failureNotice', () => {
       failureNotice({ ...source('a', 'Ready'), failureReason: 'Processing again failed' }),
     ).toBe('Processing again failed');
     expect(failureNotice({ ...source('a', 'Processing'), failureReason: 'stale' })).toBeNull();
+  });
+});
+
+describe('safeHttpUrl', () => {
+  it('keeps absolute http and https URLs', () => {
+    expect(safeHttpUrl('https://www.gutenberg.org/ebooks/1727')).toBe(
+      'https://www.gutenberg.org/ebooks/1727',
+    );
+    expect(safeHttpUrl('  http://example.org/a?b=c ')).toBe('http://example.org/a?b=c');
+  });
+
+  it('refuses every other scheme and anything that is not an absolute URL', () => {
+    for (const url of [
+      'javascript:alert(1)',
+      ' JavaScript:alert(1)',
+      'data:text/html,hi',
+      'ftp://example.org/book.pdf',
+      'file:///etc/passwd',
+      '//example.org/book.pdf',
+      '/books/book.pdf',
+      'example.org/book.pdf',
+      '',
+      '   ',
+      null,
+      undefined,
+    ]) {
+      expect(safeHttpUrl(url)).toBeNull();
+    }
+  });
+});
+
+describe('originHost', () => {
+  it('shows the host without a leading www', () => {
+    expect(originHost('https://www.gutenberg.org/ebooks/1727')).toBe('gutenberg.org');
+    expect(originHost('http://archive.org/details/x')).toBe('archive.org');
   });
 });

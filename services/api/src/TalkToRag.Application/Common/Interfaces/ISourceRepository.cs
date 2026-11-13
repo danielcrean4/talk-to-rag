@@ -16,6 +16,7 @@ public interface ISourceRepository
     Task AddAsync(Source source, CancellationToken cancellationToken);
     Task UpdateAsync(Source source, CancellationToken cancellationToken);
     Task<bool> SetStatusAsync(Guid id, SourceStatus status, string? failureReason, CancellationToken cancellationToken);
+    Task<bool> SetDetailsForUserAsync(Guid id, Guid userId, string? license, string? sourceUrl, CancellationToken cancellationToken);
     Task<bool> HasChunksAsync(Guid id, CancellationToken cancellationToken);
     Task<bool> DeleteForUserAsync(Guid id, Guid userId, CancellationToken cancellationToken);
 }

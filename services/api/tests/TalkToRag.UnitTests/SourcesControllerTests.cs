@@ -24,6 +24,18 @@ public class SourcesControllerTests
         Assert.True(formLimits.MultipartBodyLengthLimit > SourceService.MaxSizeBytes, "MultipartBodyLengthLimit must exceed the service limit");
     }
 
+    [Theory]
+    [InlineData("license")]
+    [InlineData("sourceUrl")]
+    public void Upload_ReadsLicenseAndSourceUrl_FromTheForm(string name)
+    {
+        var parameter = typeof(SourcesController).GetMethod(nameof(SourcesController.Upload))!
+            .GetParameters()
+            .Single(p => p.Name == name);
+
+        Assert.NotNull(parameter.GetCustomAttribute<FromFormAttribute>());
+    }
+
     [Fact]
     public async Task GetFile_ReturnsFileStreamResult_WithInlineHeader_AndRangeProcessing()
     {
@@ -62,13 +74,16 @@ public class SourcesControllerTests
 
     private sealed class FakeSourceService(string fileName = "cs229.pdf") : ISourceService
     {
-        public Task<CreateSourceResponse> UploadAsync(string fileName, Stream stream, CancellationToken cancellationToken) =>
+        public Task<CreateSourceResponse> UploadAsync(string fileName, Stream stream, string? license, string? sourceUrl, CancellationToken cancellationToken) =>
             throw new NotImplementedException();
 
         public Task<IReadOnlyList<SourceDto>> ListAsync(CancellationToken cancellationToken) =>
             throw new NotImplementedException();
 
         public Task<SourceDto> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
+            throw new NotImplementedException();
+
+        public Task<SourceDto> UpdateAsync(Guid id, UpdateSourceRequest request, CancellationToken cancellationToken) =>
             throw new NotImplementedException();
 
         public Task<SourceFileResponse> GetFileAsync(Guid id, CancellationToken cancellationToken) =>

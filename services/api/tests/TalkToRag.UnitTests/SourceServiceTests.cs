@@ -25,7 +25,7 @@ public class SourceServiceTests
         var content = Encoding.UTF8.GetBytes("# Introduction to RAG\n\nSome text content.");
         using var stream = new MemoryStream(content);
 
-        var response = await service.UploadAsync("textbook.md", stream, default);
+        var response = await service.UploadAsync("textbook.md", stream, null, null, default);
 
         Assert.Equal("Pending", response.Status);
         Assert.Equal("textbook", response.Title);
@@ -58,10 +58,155 @@ public class SourceServiceTests
         using var stream = new MemoryStream([1, 2, 3]);
 
         await Assert.ThrowsAsync<RequestValidationException>(() =>
-            service.UploadAsync(fileName, stream, default));
+            service.UploadAsync(fileName, stream, null, null, default));
 
         Assert.Empty(_repository.All);
         Assert.Empty(_queue.Enqueued);
+    }
+
+    [Fact]
+    public async Task UploadAsync_StoresLicenseAndSourceUrl_Trimmed()
+    {
+        var service = CreateService();
+        using var stream = new MemoryStream([1, 2, 3]);
+
+        await service.UploadAsync("notes.txt", stream, "  CC BY 4.0 ", " https://example.org/notes.txt ", default);
+
+        var stored = Assert.Single(_repository.All);
+        Assert.Equal("CC BY 4.0", stored.License);
+        Assert.Equal("https://example.org/notes.txt", stored.SourceUrl);
+    }
+
+    [Fact]
+    public async Task UploadAsync_StoresBlankLicenseAndSourceUrl_AsNull()
+    {
+        var service = CreateService();
+        using var stream = new MemoryStream([1, 2, 3]);
+
+        await service.UploadAsync("notes.txt", stream, "   ", "", default);
+
+        var stored = Assert.Single(_repository.All);
+        Assert.Null(stored.License);
+        Assert.Null(stored.SourceUrl);
+    }
+
+    [Theory]
+    [InlineData("javascript:alert(1)")]
+    [InlineData("ftp://example.org/book.pdf")]
+    [InlineData("file:///etc/passwd")]
+    [InlineData("//example.org/book.pdf")]
+    [InlineData("/books/book.pdf")]
+    [InlineData("example.org/book.pdf")]
+    [InlineData("data:text/html,hi")]
+    [InlineData("http://")]
+    public async Task UploadAsync_RejectsSourceUrlThatIsNotAbsoluteHttp_BeforeWritingAnything(string sourceUrl)
+    {
+        var service = CreateService();
+        using var stream = new MemoryStream([1, 2, 3]);
+
+        await Assert.ThrowsAsync<RequestValidationException>(() =>
+            service.UploadAsync("notes.txt", stream, null, sourceUrl, default));
+
+        Assert.Empty(_repository.All);
+        Assert.Empty(_storage.Written);
+        Assert.Empty(_queue.Enqueued);
+    }
+
+    [Fact]
+    public async Task UploadAsync_RejectsOverlongLicense()
+    {
+        var service = CreateService();
+        using var stream = new MemoryStream([1, 2, 3]);
+
+        await Assert.ThrowsAsync<RequestValidationException>(() =>
+            service.UploadAsync("notes.txt", stream, new string('a', Source.MaxLicenseLength + 1), null, default));
+
+        Assert.Empty(_storage.Written);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_SetsLicenseAndSourceUrl()
+    {
+        var service = CreateService();
+        var source = AddSource(_currentUser.UserId, SourceStatus.Ready);
+
+        var result = await service.UpdateAsync(source.Id, new UpdateSourceRequest(" Public domain ", "http://example.org/a?b=c"), default);
+
+        Assert.Equal("Public domain", result.License);
+        Assert.Equal("http://example.org/a?b=c", result.SourceUrl);
+        Assert.Equal("Public domain", source.License);
+        Assert.Equal("http://example.org/a?b=c", source.SourceUrl);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_KeepsAFieldLeftNull_AndClearsABlankOne()
+    {
+        var service = CreateService();
+        var source = AddSource(_currentUser.UserId, SourceStatus.Ready);
+        source.License = "CC BY 4.0";
+        source.SourceUrl = "https://example.org/book.pdf";
+
+        var result = await service.UpdateAsync(source.Id, new UpdateSourceRequest(null, "  "), default);
+
+        Assert.Equal("CC BY 4.0", result.License);
+        Assert.Null(result.SourceUrl);
+        Assert.Equal("CC BY 4.0", source.License);
+        Assert.Null(source.SourceUrl);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_AcceptsFieldsAtTheirMaximumLength()
+    {
+        var service = CreateService();
+        var source = AddSource(_currentUser.UserId, SourceStatus.Ready);
+        var license = new string('a', Source.MaxLicenseLength);
+        var url = "https://example.org/" + new string('p', Source.MaxSourceUrlLength - "https://example.org/".Length);
+
+        var result = await service.UpdateAsync(source.Id, new UpdateSourceRequest(license, url), default);
+
+        Assert.Equal(license, result.License);
+        Assert.Equal(url, result.SourceUrl);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_RejectsOverlongFields_AndChangesNothing()
+    {
+        var service = CreateService();
+        var source = AddSource(_currentUser.UserId, SourceStatus.Ready);
+        source.License = "CC0";
+        var longUrl = "https://example.org/" + new string('p', Source.MaxSourceUrlLength);
+
+        await Assert.ThrowsAsync<RequestValidationException>(() =>
+            service.UpdateAsync(source.Id, new UpdateSourceRequest(new string('a', Source.MaxLicenseLength + 1), null), default));
+        await Assert.ThrowsAsync<RequestValidationException>(() =>
+            service.UpdateAsync(source.Id, new UpdateSourceRequest(null, longUrl), default));
+
+        Assert.Equal("CC0", source.License);
+        Assert.Null(source.SourceUrl);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_RejectsSourceUrlWithAnotherScheme()
+    {
+        var service = CreateService();
+        var source = AddSource(_currentUser.UserId, SourceStatus.Ready);
+
+        await Assert.ThrowsAsync<RequestValidationException>(() =>
+            service.UpdateAsync(source.Id, new UpdateSourceRequest(null, "javascript:alert(1)"), default));
+
+        Assert.Null(source.SourceUrl);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_ThrowsNotFound_WhenOwnedByAnotherUser()
+    {
+        var service = CreateService();
+        var source = AddSource(Guid.NewGuid(), SourceStatus.Ready);
+
+        await Assert.ThrowsAsync<NotFoundException>(() =>
+            service.UpdateAsync(source.Id, new UpdateSourceRequest("CC0", null), default));
+
+        Assert.Null(source.License);
     }
 
     [Fact]
@@ -71,7 +216,7 @@ public class SourceServiceTests
         using var stream = new MemoryStream([]);
 
         await Assert.ThrowsAsync<RequestValidationException>(() =>
-            service.UploadAsync("notes.txt", stream, default));
+            service.UploadAsync("notes.txt", stream, null, null, default));
     }
 
     [Fact]
@@ -83,7 +228,7 @@ public class SourceServiceTests
         // Like ClaimsCurrentUser on a request with no signed-in user.
         _currentUser.ThrowOnAccess = true;
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            service.UploadAsync("notes.txt", stream, default));
+            service.UploadAsync("notes.txt", stream, null, null, default));
     }
 
     [Fact]
@@ -365,7 +510,7 @@ public class SourceServiceTests
                 s.Status.ToString(),
                 s.FailureReason,
                 s.Chunks.Count,
-                s.CreatedAtUtc, []));
+                s.CreatedAtUtc, [], s.License, s.SourceUrl));
         }
 
         public Task<Source?> FindEntityByIdForUserAsync(Guid id, Guid userId, CancellationToken cancellationToken) =>
@@ -387,7 +532,7 @@ public class SourceServiceTests
                     s.Status.ToString(),
                     s.FailureReason,
                     s.Chunks.Count,
-                    s.CreatedAtUtc, []))
+                    s.CreatedAtUtc, [], s.License, s.SourceUrl))
                 .ToList();
             return Task.FromResult(result);
         }
@@ -427,6 +572,15 @@ public class SourceServiceTests
             if (source is null) return Task.FromResult(false);
             source.Status = status;
             source.FailureReason = failureReason;
+            return Task.FromResult(true);
+        }
+
+        public Task<bool> SetDetailsForUserAsync(Guid id, Guid userId, string? license, string? sourceUrl, CancellationToken cancellationToken)
+        {
+            var source = All.FirstOrDefault(s => s.Id == id && s.UserId == userId);
+            if (source is null) return Task.FromResult(false);
+            source.License = license;
+            source.SourceUrl = sourceUrl;
             return Task.FromResult(true);
         }
 

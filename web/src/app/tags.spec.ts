@@ -14,6 +14,8 @@ const source = (id: string, tagIds: string[] = []): Source => ({
   chunkCount: 0,
   createdAtUtc: '2026-01-01T00:00:00Z',
   tagIds,
+  license: null,
+  sourceUrl: null,
 });
 
 const tags = [tag('sea'), tag('land'), tag('sky')];

@@ -55,6 +55,7 @@ def describe() -> str:
                 "audit.answers: the question, answer and cited passage numbers of each summary.",
                 "audit.messages, audit.questions: text a model wrote is given by length only; read it through the three views above.",
                 "audit.citations: where each cited passage is (source, page, section), never its text.",
+                "audit.sources: license and source_url are what the user recorded about a source's license and origin; either may be null.",
                 "Mastery is not stored; derive it from audit.attempts (score runs from 0 to 1).",
             ],
         }

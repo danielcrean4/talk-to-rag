@@ -11,6 +11,8 @@ public class SourceConfiguration : IEntityTypeConfiguration<Source>
         builder.HasOne<User>().WithMany().HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
         builder.Property(s => s.Status).HasConversion<string>();
         builder.Property(s => s.FileHash).HasMaxLength(64);
+        builder.Property(s => s.License).HasMaxLength(Source.MaxLicenseLength);
+        builder.Property(s => s.SourceUrl).HasMaxLength(Source.MaxSourceUrlLength);
         builder.HasIndex(s => s.BlobKey).IsUnique();
         builder.HasIndex(s => new { s.UserId, s.CreatedAtUtc });
         builder.HasIndex(s => new { s.UserId, s.FileHash });

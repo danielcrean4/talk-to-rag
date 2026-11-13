@@ -69,6 +69,7 @@ sequenceDiagram
 ```
 
 - Uploads accept `.pdf`, `.md` and `.txt` up to 200 MB.
+- A source can carry a license (free text, such as "CC BY 4.0") and the URL it came from, both optional. The upload takes them as the form fields `license` and `sourceUrl`, and `PATCH /api/sources/{id}` changes them later: a field left out or null keeps its value, an empty one clears it. Values are trimmed; a license over 200 characters, a URL over 2000, or a URL that is not an absolute http or https URL is a 400. The Sources screen sets them with Edit details on each source.
 - Markdown and text are one page: every chunk has `page_number` 1, and the section is the Markdown heading path.
 - A failed job sets status Failed with a reason. If the source still has chunks from an earlier ingestion, it goes back to Ready with the reason set, so it stays searchable.
 - On startup the worker queues every source still Pending or Processing.
@@ -169,7 +170,7 @@ API (`services/api`, all under `/api`; all but `health`, `auth/register`, `auth/
 |---|---|
 | Health | `GET health` |
 | Auth | `POST auth/register`, `POST auth/login`, `GET auth/session`, `GET auth/me` |
-| Sources | `POST sources`, `GET sources`, `GET sources/{id}`, `GET sources/{id}/file` (also takes `?token=`), `POST sources/{id}/retry`, `DELETE sources/{id}` |
+| Sources | `POST sources`, `GET sources`, `GET sources/{id}`, `GET sources/{id}/file` (also takes `?token=`), `PATCH sources/{id}` (license, source URL), `POST sources/{id}/retry`, `DELETE sources/{id}` |
 | Notebooks | `POST`, `GET notebooks`; `GET`, `PATCH`, `DELETE notebooks/{id}`; `PUT`, `DELETE notebooks/{id}/sources/{sourceId}` |
 | Tags | `POST`, `GET tags`; `DELETE tags/{id}`; `GET sources/{id}/tags`; `PUT`, `DELETE sources/{id}/tags/{tagId}` |
 | Search | `POST search`, `POST search/{conversationId}/summary`, `GET search/{conversationId}/summary/stream` |
@@ -233,6 +234,8 @@ erDiagram
         text status "Pending, Processing, Ready, Failed"
         text failure_reason
         text file_hash "SHA-256"
+        varchar license "free text, up to 200"
+        varchar source_url "http or https, up to 2000"
         timestamptz created_at_utc
     }
     source_chunks {
@@ -349,4 +352,4 @@ erDiagram
     }
 ```
 
-The `audit` schema has views named `ai_calls`, `model_calls`, `answers`, `sources`, `chunks`, `messages`, `citations`, `concepts`, `concept_prerequisites`, `concept_passages`, `questions` and `attempts`, defined in the migrations under `services/api/src/TalkToRag.Infrastructure/Persistence/Migrations`.
+The `audit` schema has views named `ai_calls`, `model_calls`, `answers`, `sources`, `chunks`, `messages`, `citations`, `concepts`, `concept_prerequisites`, `concept_passages`, `questions` and `attempts`, defined in the migrations under `services/api/src/TalkToRag.Infrastructure/Persistence/Migrations`. `audit.sources` includes each source's `license` and `source_url`, which describe the source and are not its text.

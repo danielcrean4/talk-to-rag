@@ -220,6 +220,65 @@ public class SourceRepositoryIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task LicenseAndSourceUrl_AreStored_Changed_AndShownToTheAuditor()
+    {
+        var user = new User { Id = Guid.NewGuid(), Email = "a@test.com", DisplayName = "User A", PasswordHash = "hash" };
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        var blobRoot = Directory.CreateTempSubdirectory().FullName;
+        try
+        {
+            var storage = new LocalBlobStorage(blobRoot);
+            var service = new SourceService(new SourceRepository(_db), storage, new NoQueue(), new FixedUser(user.Id), TimeProvider.System);
+
+            var created = await service.UploadAsync("odyssey.txt", new MemoryStream("Sing, O Muse"u8.ToArray()), " Public domain ", "https://example.org/odyssey.txt", default);
+
+            var uploaded = await service.GetByIdAsync(created.Id, default);
+            Assert.Equal("Public domain", uploaded.License);
+            Assert.Equal("https://example.org/odyssey.txt", uploaded.SourceUrl);
+
+            Assert.True(await new SourceRepository(_db).SetStatusAsync(created.Id, SourceStatus.Ready, null, default));
+            var updated = await service.UpdateAsync(created.Id, new UpdateSourceRequest("CC BY 4.0", null), default);
+            Assert.Equal("CC BY 4.0", updated.License);
+            Assert.Equal("https://example.org/odyssey.txt", updated.SourceUrl);
+            Assert.Equal("Ready", updated.Status);
+
+            await Assert.ThrowsAsync<NotFoundException>(() =>
+                new SourceService(new SourceRepository(_db), storage, new NoQueue(), new FixedUser(Guid.NewGuid()), TimeProvider.System)
+                    .UpdateAsync(created.Id, new UpdateSourceRequest("CC0", ""), default));
+
+            _db.ChangeTracker.Clear();
+            var listed = Assert.Single(await new SourceRepository(_db).ListForUserAsync(user.Id, default));
+            Assert.Equal("CC BY 4.0", listed.License);
+            Assert.Equal("https://example.org/odyssey.txt", listed.SourceUrl);
+            Assert.Equal("Ready", listed.Status);
+
+            var audited = await _db.Database
+                .SqlQuery<string>($"SELECT license || ' from ' || source_url AS \"Value\" FROM audit.sources WHERE id = {created.Id}")
+                .SingleAsync();
+            Assert.Equal("CC BY 4.0 from https://example.org/odyssey.txt", audited);
+
+            var auditColumns = await _db.Database
+                .SqlQuery<string>($"SELECT string_agg(column_name, ',' ORDER BY ordinal_position) AS \"Value\" FROM information_schema.columns WHERE table_schema = 'audit' AND table_name = 'sources'")
+                .SingleAsync();
+            Assert.Equal(
+                "id,user_id,title,file_name,content_type,size_bytes,status,failure_reason,license,source_url,created_at_utc,chunk_count,last_page",
+                auditColumns);
+
+            var auditorCanRead = await _db.Database
+                .SqlQuery<bool>($"SELECT has_table_privilege('talk_to_rag_auditor', 'audit.sources', 'SELECT') AS \"Value\"")
+                .SingleAsync();
+            Assert.True(auditorCanRead);
+        }
+        finally
+        {
+            Directory.Delete(blobRoot, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task ListAndScope_UseEachSourcesTags()
     {
         var user = new User { Id = Guid.NewGuid(), Email = "a@test.com", DisplayName = "User A", PasswordHash = "hash" };

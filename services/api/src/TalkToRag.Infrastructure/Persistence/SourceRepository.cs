@@ -19,7 +19,9 @@ public sealed class SourceRepository(TalkToRagDbContext db) : ISourceRepository
         s.FailureReason,
         s.Chunks.Count,
         s.CreatedAtUtc,
-        s.Tags.Select(t => t.TagId).ToList());
+        s.Tags.Select(t => t.TagId).ToList(),
+        s.License,
+        s.SourceUrl);
 
     public Task<SourceDto?> FindByIdForUserAsync(Guid id, Guid userId, CancellationToken cancellationToken) =>
         db.Sources
@@ -110,6 +112,13 @@ public sealed class SourceRepository(TalkToRagDbContext db) : ISourceRepository
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(s => s.Status, status)
                 .SetProperty(s => s.FailureReason, failureReason), cancellationToken) > 0;
+
+    public async Task<bool> SetDetailsForUserAsync(Guid id, Guid userId, string? license, string? sourceUrl, CancellationToken cancellationToken) =>
+        await db.Sources
+            .Where(s => s.Id == id && s.UserId == userId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(s => s.License, license)
+                .SetProperty(s => s.SourceUrl, sourceUrl), cancellationToken) > 0;
 
     public Task<bool> HasChunksAsync(Guid id, CancellationToken cancellationToken) =>
         db.SourceChunks.AnyAsync(c => c.SourceId == id, cancellationToken);
