@@ -129,6 +129,7 @@ The SQL in `SearchRepository`:
 ## Audit log
 
 - `AiAuditHandler`, a `DelegatingHandler` on the API's AI-service `HttpClient`, writes every request and response to `ai_calls`, once as sent and once redacted by `AuditJson`.
+- A row's `user_id` is the signed-in user. Ingestion runs outside a request, so `SourceIngestionWorker` names the source's owner with `BackgroundAuditUser` around the call, and the handler uses that when there is no signed-in user.
 - The AI service adds a `trace` list to its responses (`tracing.py`), one entry per model call with the messages and the completion.
 - Redaction replaces passage text, and earlier answers sent as context, with a placeholder that gives the length. It also replaces any run of 40 or more letters and digits that a model reply copied from them.
 - The `audit` schema holds views over the redacted columns and over the tables, without source text. The role `talk_to_rag_auditor` may only `SELECT` from it.

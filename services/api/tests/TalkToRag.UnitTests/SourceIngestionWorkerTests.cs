@@ -8,6 +8,7 @@ using TalkToRag.Application.Sources;
 using TalkToRag.Domain.Entities;
 using TalkToRag.Domain.Enums;
 using TalkToRag.Infrastructure.Ai;
+using TalkToRag.Infrastructure.Audit;
 using TalkToRag.Infrastructure.Ingestion;
 
 namespace TalkToRag.UnitTests;
@@ -473,6 +474,47 @@ public class SourceIngestionWorkerTests
     }
 
     [Fact]
+    public async Task Worker_AttributesTheIngestCallToTheSourceOwner_OnlyForThatCall()
+    {
+        var source = new Source
+        {
+            Id = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
+            Title = "TD Learning",
+            FileName = "td.pdf",
+            ContentType = "application/pdf",
+            BlobKey = "sources/td.pdf",
+            Status = SourceStatus.Pending
+        };
+
+        Guid? auditUserDuringCall = null;
+        var repo = new AuditUserRecordingRepo([source]);
+        var fakeAi = new FakeAiClient(_ =>
+        {
+            auditUserDuringCall = BackgroundAuditUser.UserId;
+            return new IngestSourceResponse("test-embed", [new IngestedChunkDto(1, null, null, 0, "Content", [0.1f])]);
+        });
+        var queue = new ChannelSourceIngestionQueue();
+        await queue.EnqueueAsync(source.Id);
+        var worker = CreateWorker(repo, fakeAi, queue);
+
+        using var cts = new CancellationTokenSource();
+        var runTask = worker.StartAsync(cts.Token);
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (DateTime.UtcNow < deadline && source.Status != SourceStatus.Ready)
+        {
+            await Task.Delay(50);
+        }
+
+        cts.Cancel();
+        try { await runTask; } catch { }
+
+        Assert.Equal(SourceStatus.Ready, source.Status);
+        Assert.Equal(source.UserId, auditUserDuringCall);
+        Assert.Null(repo.AuditUserWhenSaving);
+    }
+
+    [Fact]
     public async Task HttpAiClient_ReadsAMissingEmbeddingModelAsNull()
     {
         var handler = new StubHttpMessageHandler(HttpStatusCode.OK, """{"chunks": []}""");
@@ -511,7 +553,7 @@ public class SourceIngestionWorkerTests
         public Task<IReadOnlyList<Guid>?> FindReadySourceIdsForScopeAsync(Guid userId, IReadOnlyList<Guid> notebookIds, IReadOnlyList<Guid> tagIds, IReadOnlyList<Guid> sourceIds, CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyList<Guid>?>(null);
 
-        public Task SaveChunksAsync(Guid sourceId, IReadOnlyList<SourceChunk> chunks, CancellationToken cancellationToken)
+        public virtual Task SaveChunksAsync(Guid sourceId, IReadOnlyList<SourceChunk> chunks, CancellationToken cancellationToken)
         {
             var s = _all.FirstOrDefault(s => s.Id == sourceId)
                 ?? throw new InvalidOperationException("Foreign key violation: the source no longer exists.");
@@ -537,6 +579,17 @@ public class SourceIngestionWorkerTests
 
         public Task<bool> DeleteForUserAsync(Guid id, Guid userId, CancellationToken cancellationToken) =>
             Task.FromResult(_all.RemoveAll(s => s.Id == id && s.UserId == userId) > 0);
+    }
+
+    private sealed class AuditUserRecordingRepo(IEnumerable<Source> sources) : FakeSourceRepo(sources)
+    {
+        public Guid? AuditUserWhenSaving { get; private set; } = Guid.Empty;
+
+        public override Task SaveChunksAsync(Guid sourceId, IReadOnlyList<SourceChunk> chunks, CancellationToken cancellationToken)
+        {
+            AuditUserWhenSaving = BackgroundAuditUser.UserId;
+            return base.SaveChunksAsync(sourceId, chunks, cancellationToken);
+        }
     }
 
     private sealed class CrashingOnFirstFindRepo(IEnumerable<Source> sources, Guid crashingId) : FakeSourceRepo(sources)
