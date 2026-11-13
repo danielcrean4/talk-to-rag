@@ -170,6 +170,7 @@ public class PracticeServiceTests
         public Task AddAsync(Source source, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task UpdateAsync(Source source, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<bool> SetStatusAsync(Guid id, SourceStatus status, string? failureReason, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task<bool> SetDetailsForUserAsync(Guid id, Guid userId, string? license, string? sourceUrl, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<bool> HasChunksAsync(Guid id, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<bool> DeleteForUserAsync(Guid id, Guid userId, CancellationToken cancellationToken) => throw new NotImplementedException();
     }

@@ -19,7 +19,7 @@ public sealed class SourceService(
         ".pdf", ".md", ".txt"
     };
 
-    public async Task<CreateSourceResponse> UploadAsync(string fileName, Stream stream, CancellationToken cancellationToken)
+    public async Task<CreateSourceResponse> UploadAsync(string fileName, Stream stream, string? license, string? sourceUrl, CancellationToken cancellationToken)
     {
         var userId = currentUser.UserId;
 
@@ -27,6 +27,9 @@ public sealed class SourceService(
         {
             throw new RequestValidationException("File name is required.");
         }
+
+        license = CleanLicense(license);
+        sourceUrl = CleanSourceUrl(sourceUrl);
 
         var extension = Path.GetExtension(fileName);
         if (!AllowedExtensions.Contains(extension))
@@ -82,6 +85,8 @@ public sealed class SourceService(
             SizeBytes = sizeBytes,
             BlobKey = blobKey,
             FileHash = fileHash,
+            License = license,
+            SourceUrl = sourceUrl,
             Status = SourceStatus.Pending,
             CreatedAtUtc = timeProvider.GetUtcNow()
         };
@@ -98,6 +103,24 @@ public sealed class SourceService(
     public async Task<SourceDto> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
         await sourceRepository.FindByIdForUserAsync(id, currentUser.UserId, cancellationToken)
             ?? throw new NotFoundException($"Source '{id}' not found.");
+
+    public async Task<SourceDto> UpdateAsync(Guid id, UpdateSourceRequest request, CancellationToken cancellationToken)
+    {
+        var userId = currentUser.UserId;
+        var source = await sourceRepository.FindByIdForUserAsync(id, userId, cancellationToken)
+            ?? throw new NotFoundException($"Source '{id}' not found.");
+
+        var license = request.License is null ? source.License : CleanLicense(request.License);
+        var sourceUrl = request.SourceUrl is null ? source.SourceUrl : CleanSourceUrl(request.SourceUrl);
+
+        // A targeted update, so a status the ingestion worker writes meanwhile is not overwritten.
+        if (!await sourceRepository.SetDetailsForUserAsync(id, userId, license, sourceUrl, cancellationToken))
+        {
+            throw new NotFoundException($"Source '{id}' not found.");
+        }
+
+        return source with { License = license, SourceUrl = sourceUrl };
+    }
 
     public async Task<SourceFileResponse> GetFileAsync(Guid id, CancellationToken cancellationToken)
     {
@@ -130,6 +153,43 @@ public sealed class SourceService(
         }
 
         await blobStorage.DeleteAsync(source.BlobKey, cancellationToken);
+    }
+
+    private static string? CleanLicense(string? license)
+    {
+        var trimmed = license?.Trim();
+        if (string.IsNullOrEmpty(trimmed))
+        {
+            return null;
+        }
+
+        if (trimmed.Length > Source.MaxLicenseLength)
+        {
+            throw new RequestValidationException($"License cannot be longer than {Source.MaxLicenseLength} characters.");
+        }
+
+        return trimmed;
+    }
+
+    private static string? CleanSourceUrl(string? sourceUrl)
+    {
+        var trimmed = sourceUrl?.Trim();
+        if (string.IsNullOrEmpty(trimmed))
+        {
+            return null;
+        }
+
+        if (trimmed.Length > Source.MaxSourceUrlLength)
+        {
+            throw new RequestValidationException($"Source URL cannot be longer than {Source.MaxSourceUrlLength} characters.");
+        }
+
+        if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) || uri.Host.Length == 0)
+        {
+            throw new RequestValidationException("Source URL must be an absolute http or https URL.");
+        }
+
+        return trimmed;
     }
 
     private async Task<Source> RequireSourceAsync(Guid id, CancellationToken cancellationToken) =>

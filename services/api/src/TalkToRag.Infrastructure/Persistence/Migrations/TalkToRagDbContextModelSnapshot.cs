@@ -541,9 +541,19 @@ namespace TalkToRag.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("file_name");
 
+                    b.Property<string>("License")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("license");
+
                     b.Property<long>("SizeBytes")
                         .HasColumnType("bigint")
                         .HasColumnName("size_bytes");
+
+                    b.Property<string>("SourceUrl")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("source_url");
 
                     b.Property<string>("Status")
                         .IsRequired()

@@ -7,7 +7,15 @@ import { Auth, errorMessage } from '../auth';
 import { sourceFileUrl } from '../passages';
 import { SearchSession } from '../search/search-session';
 import { knownTagIds, tagCount, tagsOff, tagsOn, toggleId, withAnyTag } from '../tags';
-import { anyWorking, failureNotice, formatBytes, inNotebook, reprocessLabel } from './source-list';
+import {
+  anyWorking,
+  failureNotice,
+  formatBytes,
+  inNotebook,
+  originHost,
+  reprocessLabel,
+  safeHttpUrl,
+} from './source-list';
 
 const SOURCE_DRAG_TYPE = 'application/x-talk-to-rag-source';
 const POLL_MS = 3000;
@@ -48,6 +56,10 @@ export class SourcesPage implements OnDestroy {
   protected newName = '';
   protected newDescription = '';
   protected newTagName = '';
+  /** The source whose license and origin are being edited; the drafts live here so polling cannot wipe them. */
+  protected readonly editingDetails = signal<string | null>(null);
+  protected draftLicense = '';
+  protected draftSourceUrl = '';
 
   protected readonly formatBytes = formatBytes;
   protected readonly reprocessLabel = reprocessLabel;
@@ -55,6 +67,8 @@ export class SourcesPage implements OnDestroy {
   protected readonly tagsOn = tagsOn;
   protected readonly tagsOff = tagsOff;
   protected readonly tagCount = tagCount;
+  protected readonly safeHttpUrl = safeHttpUrl;
+  protected readonly originHost = originHost;
 
   constructor() {
     this.loadSources();
@@ -206,6 +220,35 @@ export class SourcesPage implements OnDestroy {
       `Removing tag ${tag.name} from ${source.title}`,
       this.api.untagSource(source.id, tag.id),
       () => this.setSourceTags((ids) => ids.filter((id) => id !== tag.id), source.id),
+    );
+  }
+
+  editDetails(source: Source): void {
+    this.draftLicense = source.license ?? '';
+    this.draftSourceUrl = source.sourceUrl ?? '';
+    this.error.set('');
+    this.editingDetails.set(source.id);
+  }
+
+  saveDetails(source: Source): void {
+    const sourceUrl = this.draftSourceUrl.trim();
+    if (sourceUrl && !safeHttpUrl(sourceUrl)) {
+      this.error.set('The origin must be a full http:// or https:// address.');
+      return;
+    }
+    this.run(
+      `Saving details of ${source.title}`,
+      this.api.updateSource(source.id, { license: this.draftLicense.trim(), sourceUrl }),
+      (saved) => {
+        this.editingDetails.set(null);
+        this.sources.update((sources) =>
+          sources.map((item) =>
+            item.id === saved.id
+              ? { ...item, license: saved.license, sourceUrl: saved.sourceUrl }
+              : item,
+          ),
+        );
+      },
     );
   }
 

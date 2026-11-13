@@ -15,7 +15,12 @@ public sealed record SourceDto(
     string? FailureReason,
     int ChunkCount,
     DateTimeOffset CreatedAtUtc,
-    IReadOnlyList<Guid> TagIds);
+    IReadOnlyList<Guid> TagIds,
+    string? License = null,
+    string? SourceUrl = null);
+
+/// <summary>A field left null keeps its value; an empty or blank one clears it.</summary>
+public sealed record UpdateSourceRequest(string? License, string? SourceUrl);
 
 public sealed record SourceFileResponse(
     Stream Stream,

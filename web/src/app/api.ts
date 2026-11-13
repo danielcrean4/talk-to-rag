@@ -77,6 +77,15 @@ export interface Source {
   chunkCount: number;
   createdAtUtc: string;
   tagIds: string[];
+  license: string | null;
+  /** Where the source came from; the API accepts only absolute http and https URLs. */
+  sourceUrl: string | null;
+}
+
+/** A field left out keeps its value; an empty string clears it. */
+export interface SourceDetailsChange {
+  license?: string;
+  sourceUrl?: string;
 }
 
 export interface Tag {
@@ -192,6 +201,10 @@ export class Api {
     const form = new FormData();
     form.append('file', file);
     return this.http.post<CreateSourceResponse>('/api/sources', form);
+  }
+
+  updateSource(id: string, changes: SourceDetailsChange): Observable<Source> {
+    return this.http.patch<Source>(`/api/sources/${id}`, changes);
   }
 
   retrySource(id: string): Observable<void> {

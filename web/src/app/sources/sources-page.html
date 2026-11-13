@@ -181,7 +181,7 @@
       class="source"
       [class.match]="matched().has(source.id)"
       [class.failed]="source.status === 'Failed'"
-      draggable="true"
+      [attr.draggable]="editingDetails() === source.id ? 'false' : 'true'"
       (dragstart)="dragSource($event, source)"
       (dragend)="endDrag()"
     >
@@ -207,6 +207,22 @@
           <span class="badge">in last search</span>
         }
       </div>
+      @let origin = safeHttpUrl(source.sourceUrl);
+      @if (source.license || origin) {
+        <div class="meta provenance">
+          @if (source.license) {
+            <span>License: {{ source.license }}</span>
+          }
+          @if (origin) {
+            <span
+              >From
+              <a [href]="origin" target="_blank" rel="noopener noreferrer" [title]="origin">{{
+                originHost(origin)
+              }}</a></span
+            >
+          }
+        </div>
+      }
       @let sourceTags = tagsOn(source, tags());
       @if (sourceTags.length) {
         <ul class="tags" aria-label="Tags">
@@ -229,6 +245,37 @@
       @if (failureNotice(source); as notice) {
         <p class="failure">{{ notice }}</p>
       }
+      @if (editingDetails() === source.id) {
+        <form
+          class="details"
+          [attr.aria-label]="'Details of ' + source.title"
+          (ngSubmit)="saveDetails(source)"
+        >
+          <label>
+            <span>License</span>
+            <input
+              name="license"
+              [(ngModel)]="draftLicense"
+              maxlength="200"
+              placeholder="e.g. CC BY 4.0 or Public domain"
+            />
+          </label>
+          <label>
+            <span>Origin</span>
+            <input
+              name="sourceUrl"
+              type="url"
+              [(ngModel)]="draftSourceUrl"
+              maxlength="2000"
+              placeholder="https://…"
+            />
+          </label>
+          <div class="details-actions">
+            <button class="primary" type="submit" [disabled]="busy() !== ''">Save</button>
+            <button type="button" (click)="editingDetails.set(null)">Cancel</button>
+          </div>
+        </form>
+      }
       @if (confirmingDelete() === source.id) {
         <div class="confirm" role="group" aria-label="Confirm delete">
           <span
@@ -245,6 +292,15 @@
         @if (reprocessLabel(source); as label) {
           <button type="button" (click)="reprocess(source)" [disabled]="busy() !== ''">
             {{ label }}
+          </button>
+        }
+        @if (editingDetails() !== source.id) {
+          <button
+            type="button"
+            [attr.aria-label]="'Edit license and origin of ' + source.title"
+            (click)="editDetails(source)"
+          >
+            Edit details
           </button>
         }
         @if (confirmingDelete() !== source.id) {

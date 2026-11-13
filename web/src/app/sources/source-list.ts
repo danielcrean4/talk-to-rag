@@ -35,6 +35,21 @@ export function reprocessLabel(source: Source): string | null {
   }
 }
 
+/** The URL when it is an absolute http or https URL, else null, so no other scheme ever reaches an href. */
+export function safeHttpUrl(url: string | null | undefined): string | null {
+  const text = url?.trim();
+  if (!text || !URL.canParse(text)) {
+    return null;
+  }
+  const parsed = new URL(text);
+  return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.href : null;
+}
+
+/** The host to show for an origin link, such as `gutenberg.org` for `https://www.gutenberg.org/ebooks/1727`. */
+export function originHost(url: string): string {
+  return new URL(url).hostname.replace(/^www\./, '');
+}
+
 /** Why the last ingestion failed. A Ready source can carry one when processing it again failed and the old passages were kept. */
 export function failureNotice(source: Source): string | null {
   if (source.status === 'Failed') {

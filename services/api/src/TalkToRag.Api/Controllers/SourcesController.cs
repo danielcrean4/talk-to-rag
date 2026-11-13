@@ -20,7 +20,11 @@ public sealed class SourcesController(ISourceService sourceService) : Controller
     [ProducesResponseType<CreateSourceResponse>(StatusCodes.Status202Accepted)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<CreateSourceResponse>> Upload(IFormFile? file, CancellationToken cancellationToken)
+    public async Task<ActionResult<CreateSourceResponse>> Upload(
+        IFormFile? file,
+        [FromForm] string? license,
+        [FromForm] string? sourceUrl,
+        CancellationToken cancellationToken)
     {
         if (file is null || file.Length == 0)
         {
@@ -28,7 +32,7 @@ public sealed class SourcesController(ISourceService sourceService) : Controller
         }
 
         await using var stream = file.OpenReadStream();
-        var response = await sourceService.UploadAsync(file.FileName, stream, cancellationToken);
+        var response = await sourceService.UploadAsync(file.FileName, stream, license, sourceUrl, cancellationToken);
         return AcceptedAtAction(nameof(GetById), new { id = response.Id }, response);
     }
 
@@ -44,6 +48,14 @@ public sealed class SourcesController(ISourceService sourceService) : Controller
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public Task<SourceDto> GetById(Guid id, CancellationToken cancellationToken) =>
         sourceService.GetByIdAsync(id, cancellationToken);
+
+    [HttpPatch("{id:guid}")]
+    [ProducesResponseType<SourceDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public Task<SourceDto> Update(Guid id, UpdateSourceRequest request, CancellationToken cancellationToken) =>
+        sourceService.UpdateAsync(id, request, cancellationToken);
 
     [HttpGet("{id:guid}/file")]
     [ProducesResponseType(StatusCodes.Status200OK)]

@@ -574,6 +574,9 @@ public class SourceIngestionWorkerTests
             return Task.FromResult(true);
         }
 
+        public Task<bool> SetDetailsForUserAsync(Guid id, Guid userId, string? license, string? sourceUrl, CancellationToken cancellationToken) =>
+            throw new NotImplementedException();
+
         public Task<bool> HasChunksAsync(Guid id, CancellationToken cancellationToken) =>
             Task.FromResult(_all.Any(s => s.Id == id && s.Chunks.Count > 0));
 
