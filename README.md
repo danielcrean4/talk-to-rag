@@ -12,7 +12,7 @@ Upload PDFs, Markdown or text files. Ask a question by typing or by voice. You g
 - **Hybrid search.** Vector search and Postgres full-text search, merged with Reciprocal Rank Fusion. Notebooks and tags narrow a search to some of your sources.
 - **Cited summaries.** A local model summarises the passages found and cites them by number. A citation that matches no passage is dropped.
 - **Voice.** The mic is transcribed by a local Whisper model. The summary is read aloud by a local Kokoro model. Audio files are deleted once they have been used.
-- **Concept graph and practice** (phase two, in progress). Concepts linked by prerequisites, flashcards written from linked passages, and a mastery level computed from your answers.
+- **Concept graph and practice** (being finished in 1.1). Concepts linked by prerequisites, flashcards written from linked passages, and a mastery level computed from your answers.
 - **Audit log.** Every model call is recorded with its prompt and reply. A read-only MCP server lets an outside model inspect that log without seeing your documents' text.
 
 No hosted model API is used anywhere.
@@ -94,8 +94,8 @@ Each request to the AI service is stored with the prompts and replies of the mod
 
 ## Roadmap
 
-- **1.0**, phase one: the search app, with the Angular UI and voice in and out. [Milestone](https://github.com/danielcrean4/talk-to-rag/milestone/1).
-- **2.0**, phase two: the learning tool. [Milestone](https://github.com/danielcrean4/talk-to-rag/milestone/2).
+- **1.0**: the search app, with the Angular UI and voice in and out. [Milestone](https://github.com/danielcrean4/talk-to-rag/milestone/1).
+- **1.1**: finishes the learning tool that 1.0.0 started. [Milestone](https://github.com/danielcrean4/talk-to-rag/milestone/2).
 
 [docs/roadmap.md](docs/roadmap.md) explains the split and how issues are written.
 
