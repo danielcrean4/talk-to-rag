@@ -81,6 +81,15 @@ public sealed class SourceIngestionWorker(
         {
             var request = new IngestSourceRequest(source.Id, source.BlobKey, source.ContentType);
             var response = await aiClient.IngestSourceAsync(request, cancellationToken);
+            if (string.IsNullOrWhiteSpace(response.EmbeddingModel))
+            {
+                if (await MarkFailedAsync(repo, source.Id, "The AI service did not say which embedding model it used. Update the AI service and retry."))
+                {
+                    logger.LogWarning("Source {SourceId} failed: the ingest response named no embedding model", source.Id);
+                }
+
+                return;
+            }
 
             var chunks = response.Chunks.Select(chunk => new SourceChunk
             {
@@ -92,7 +101,7 @@ public sealed class SourceIngestionWorker(
                 ChunkIndex = chunk.ChunkIndex,
                 Content = chunk.Content,
                 Embedding = chunk.Embedding,
-                EmbeddingModel = "nomic-embed-text"
+                EmbeddingModel = response.EmbeddingModel
             }).ToList();
 
             await repo.SaveChunksAsync(source.Id, chunks, cancellationToken);

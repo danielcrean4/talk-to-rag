@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from talk_to_rag.llm import ChatModel, Embedder, Message, ModelError, chat_model, embedder
+from talk_to_rag.llm import ChatModel, Embedder, Message, ModelError, chat_model, embedder, served_model
 from talk_to_rag.llm.adapters.openai_compatible import (
     OpenAICompatibleChat,
     OpenAICompatibleEmbedder,
@@ -99,6 +99,16 @@ def test_model_choice_is_argument_then_environment_then_default(monkeypatch):
     assert resolve_name("chat", "from-arg", config) == "from-arg"
     with pytest.raises(ConfigError, match="Unknown model 'from-env'"):
         chat_model(config=config)
+
+
+def test_served_model_is_the_providers_id_for_the_chosen_model(monkeypatch):
+    config = load("config/models.toml")
+    monkeypatch.delenv("TALK_TO_RAG_EMBED", raising=False)
+    assert served_model("embed", config=config) == "nomic-embed-text"
+
+    monkeypatch.setenv("TALK_TO_RAG_EMBED", "fake-embed")
+    assert served_model("embed", config=config) == "fake"
+    assert served_model("chat", "local-3b", config) == "hf.co/mistralai/Ministral-3-3B-Instruct-2512-GGUF:Q4_K_M"
 
 
 def test_asking_for_the_wrong_kind_fails():

@@ -28,6 +28,7 @@ class IngestedChunk(BaseModel):
 
 
 class IngestSourceResponse(BaseModel):
+    embedding_model: str
     chunks: list[IngestedChunk]
 
 
