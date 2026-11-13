@@ -37,7 +37,7 @@ class PdfSourceParser:
             # PDFium puts U+FFFE where a word was hyphenated across a line end, so dropping it
             # rejoins the word. Some PDFs also yield NUL and other control characters, which
             # Postgres text columns reject; the carriage returns go with them.
-            cleaned = re.sub(r"[\x00-\x08\x0b-\x1f\ufffe]", "", text).strip()
+            cleaned = repair_ligatures(re.sub(r"[\x00-\x08\x0b-\x1f\ufffe]", "", text)).strip()
             if cleaned:
                 label = page_labels[index] if index < len(page_labels) else None
                 pages.append(
@@ -53,6 +53,28 @@ class PdfSourceParser:
             raise IngestionError("No text layer found. This looks like a scanned PDF and needs OCR.")
 
         return pages
+
+
+_LIGATURES = str.maketrans(
+    {
+        "\ufb00": "ff",
+        "\ufb01": "fi",
+        "\ufb02": "fl",
+        "\ufb03": "ffi",
+        "\ufb04": "ffl",
+        "\ufb05": "st",
+        "\ufb06": "st",
+    }
+)
+
+# Some fonts map the ff ligature glyph to U+21B5, so "effect" comes out as "e\u21b5ect". Only
+# the arrow between two letters is repaired; one standing alone may be a real arrow.
+_FF_AS_ARROW = re.compile(r"(?<=[^\W\d_])\u21b5(?=[^\W\d_])")
+
+
+def repair_ligatures(text: str) -> str:
+    """Spell out ligature characters as letters so keyword search finds the words."""
+    return _FF_AS_ARROW.sub("ff", text.translate(_LIGATURES))
 
 
 def _page_texts(content: bytes) -> list[str]:
