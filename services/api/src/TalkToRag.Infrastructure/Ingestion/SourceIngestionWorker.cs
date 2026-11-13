@@ -5,6 +5,7 @@ using TalkToRag.Application.Common.Exceptions;
 using TalkToRag.Application.Common.Interfaces;
 using TalkToRag.Domain.Entities;
 using TalkToRag.Domain.Enums;
+using TalkToRag.Infrastructure.Audit;
 
 namespace TalkToRag.Infrastructure.Ingestion;
 
@@ -80,7 +81,11 @@ public sealed class SourceIngestionWorker(
         try
         {
             var request = new IngestSourceRequest(source.Id, source.BlobKey, source.ContentType);
-            var response = await aiClient.IngestSourceAsync(request, cancellationToken);
+            IngestSourceResponse response;
+            using (BackgroundAuditUser.Begin(source.UserId))
+            {
+                response = await aiClient.IngestSourceAsync(request, cancellationToken);
+            }
 
             var chunks = response.Chunks.Select(chunk => new SourceChunk
             {

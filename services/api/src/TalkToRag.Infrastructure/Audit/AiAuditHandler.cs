@@ -23,7 +23,7 @@ public sealed class AiAuditHandler(
         var call = new AiCall
         {
             Id = Guid.CreateVersion7(),
-            UserId = auditContext.UserId,
+            UserId = auditContext.UserId ?? BackgroundAuditUser.UserId,
             RequestTraceId = auditContext.RequestTraceId,
             Operation = request.RequestUri?.AbsolutePath ?? "unknown",
             Request = "{}",

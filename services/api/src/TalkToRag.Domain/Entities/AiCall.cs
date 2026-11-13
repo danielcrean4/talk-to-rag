@@ -9,7 +9,7 @@ public class AiCall
 {
     public Guid Id { get; set; }
 
-    /// <summary>Null for background work such as ingestion.</summary>
+    /// <summary>The signed-in user, or for ingestion the source's owner.</summary>
     public Guid? UserId { get; set; }
 
     /// <summary>Ties the call to the web request that caused it.</summary>
