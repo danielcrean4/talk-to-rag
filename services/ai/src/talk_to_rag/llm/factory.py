@@ -19,12 +19,18 @@ def chat_model(name: str | None = None, config: ModelsConfig | None = None) -> C
 
     config = config or models_config.load()
     resolved = resolve_name("chat", name, config)
-    served = config.models.get(resolved, {}).get("name", resolved)
-    return TracedChat(_build("chat", resolved, config), resolved, served)
+    return TracedChat(_build("chat", resolved, config), resolved, served_model("chat", resolved, config))
 
 
 def embedder(name: str | None = None, config: ModelsConfig | None = None) -> Embedder:
     return _build("embed", name, config)
+
+
+def served_model(kind: str, name: str | None = None, config: ModelsConfig | None = None) -> str:
+    """The id the provider knows the model by, such as "nomic-embed-text" for "local-embed"."""
+    config = config or models_config.load()
+    resolved = resolve_name(kind, name, config)
+    return config.models.get(resolved, {}).get("name", resolved)
 
 
 def resolve_name(kind: str, name: str | None, config: ModelsConfig) -> str:

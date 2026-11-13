@@ -64,12 +64,13 @@ sequenceDiagram
     Api->>Db: status Processing
     Api->>Ai: POST /v1/sources/ingest {source_id, blob_key, content_type}
     Note over Ai: parser_for(content_type): pypdfium2/pypdf, Markdown or text<br/>ParagraphChunker (1000 chars, 150 overlap)<br/>embed_documents in batches of 32
-    Ai-->>Api: chunks: page_number, page_label, section, chunk_index, content, embedding
+    Ai-->>Api: embedding_model, chunks: page_number, page_label, section, chunk_index, content, embedding
     Api->>Db: replace source_chunks in one transaction, status Ready
 ```
 
 - Uploads accept `.pdf`, `.md` and `.txt` up to 200 MB.
 - Markdown and text are one page: every chunk has `page_number` 1, and the section is the Markdown heading path.
+- Each chunk stores the `embedding_model` the AI service reports, the id its provider knows the model by (`nomic-embed-text` for `local-embed`). A response without one fails the job.
 - A failed job sets status Failed with a reason. If the source still has chunks from an earlier ingestion, it goes back to Ready with the reason set, so it stays searchable.
 - On startup the worker queues every source still Pending or Processing.
 - `POST /api/sources/{id}/retry` ingests any source that is not already Pending or Processing again. Citations in search history keep their copied text and location when the old chunks are replaced (`message_citations.source_chunk_id` is set to null).
@@ -128,6 +129,7 @@ The SQL in `SearchRepository`:
 ## Audit log
 
 - `AiAuditHandler`, a `DelegatingHandler` on the API's AI-service `HttpClient`, writes every request and response to `ai_calls`, once as sent and once redacted by `AuditJson`.
+- A row's `user_id` is the signed-in user. Ingestion runs outside a request, so `SourceIngestionWorker` names the source's owner with `BackgroundAuditUser` around the call, and the handler uses that when there is no signed-in user.
 - The AI service adds a `trace` list to its responses (`tracing.py`), one entry per model call with the messages and the completion.
 - Redaction replaces passage text, and earlier answers sent as context, with a placeholder that gives the length. It also replaces any run of 40 or more letters and digits that a model reply copied from them.
 - The `audit` schema holds views over the redacted columns and over the tables, without source text. The role `talk_to_rag_auditor` may only `SELECT` from it.

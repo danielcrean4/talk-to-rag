@@ -13,7 +13,9 @@ public sealed record IngestedChunkDto(
     string Content,
     float[] Embedding);
 
+/// <param name="EmbeddingModel">The id the embedding server knows the model by, such as "nomic-embed-text". Null from an AI service older than this field.</param>
 public sealed record IngestSourceResponse(
+    string? EmbeddingModel,
     IReadOnlyList<IngestedChunkDto> Chunks);
 
 public sealed record RecentMessageDto(string Role, string Content);

@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 
 from talk_to_rag.api.schemas import IngestedChunk, IngestSourceRequest, IngestSourceResponse
 from talk_to_rag.ingestion import IngestionError, default_chunker, parser_for
-from talk_to_rag.llm import ModelError, embedder
+from talk_to_rag.llm import ModelError, embedder, served_model
 from talk_to_rag.storage import StorageError, blob_storage
 
 router = APIRouter(prefix="/v1/sources", tags=["ingestion"])
@@ -41,6 +41,7 @@ def ingest_source(request: IngestSourceRequest) -> IngestSourceResponse:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     return IngestSourceResponse(
+        embedding_model=served_model("embed"),
         chunks=[
             IngestedChunk(
                 page_number=chunk.page_number,
@@ -51,5 +52,5 @@ def ingest_source(request: IngestSourceRequest) -> IngestSourceResponse:
                 embedding=embeddings[index],
             )
             for index, chunk in enumerate(chunks)
-        ]
+        ],
     )

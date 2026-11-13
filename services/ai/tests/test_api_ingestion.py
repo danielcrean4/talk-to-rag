@@ -30,6 +30,7 @@ def test_ingest_source_pdf_success(tmp_path, monkeypatch):
 
     assert response.status_code == 200
     data = response.json()
+    assert data["embedding_model"] == "fake"
     assert "chunks" in data
     chunks = data["chunks"]
     assert len(chunks) == 2
