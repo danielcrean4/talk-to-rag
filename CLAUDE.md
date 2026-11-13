@@ -143,6 +143,6 @@ Commands, all needing Node on the host: `make web` runs the dev server on **4201
 - Add new third-party dependencies, tools and models to `CREDITS.md`.
 - Private documents (`*.pdf`, `*.epub`, `data/`, `library/`, `sources.local.yaml`) are gitignored. Only `services/ai/tests/fixtures/*.pdf` is tracked.
 - `.agents/skills/deslop/SKILL.md` describes the cleanup pass: remove unnecessary comments, unusual defensive try/catch blocks and deep nesting, keep behavior unchanged, and hold docs and issues to claims that can be checked.
-- The roadmap is two GitHub milestones, 1.0 and 2.0; `docs/roadmap.md` explains the split and how issues are written. File new work and bugs as issues on one of them.
+- The roadmap is two GitHub milestones, 1.0 (bugs, released as `1.0.x`) and 1.1; `docs/roadmap.md` explains the split and how issues are written. File new work and bugs as issues on one of them.
 - Work happens on short branches, one per slice, merged to `main`.
 - Local models only. Never add a hosted or paid model API, not even as an option.

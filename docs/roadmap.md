@@ -1,8 +1,8 @@
 # Roadmap
 
-The work is split into two phases. Each is a GitHub milestone, and every feature and bug is an issue on one of them. Ideas that are not designed yet are listed under Later.
+The work is split into two milestones on GitHub, and every feature and bug is an issue on one of them. Ideas that are not designed yet are listed under Later.
 
-## Phase one: 1.0
+## 1.0
 
 Five steps:
 
@@ -20,14 +20,14 @@ All five are done. The Angular app is the only web UI, served by the API. CI run
 
 `1.0.0` is the first commit of this repository. Bugs found in it are filed on the 1.0 milestone and released as `1.0.x`.
 
-## Phase two: 2.0
+## 1.1
 
 The app as a learning tool: a graph of concepts and their prerequisites, flashcards and attempts with mastery derived from them, and an audit log of every model call that an outside model can read but not change.
 
-Some of phase two is already on `main`, because it was built before the phases were drawn.
+Most of this is already in `1.0.0`: the concept graph, questions and attempts with mastery, the audit log and its MCP server. What 1.1 adds is practice in the web app, review scheduling, and records of where each source came from and which model embedded it.
 
-- [What was built](https://github.com/danielcrean4/talk-to-rag/issues?q=milestone%3A2.0+is%3Aclosed)
-- [What is left](https://github.com/danielcrean4/talk-to-rag/issues?q=milestone%3A2.0+is%3Aopen)
+- [What was built](https://github.com/danielcrean4/talk-to-rag/issues?q=milestone%3A1.1+is%3Aclosed)
+- [What is left](https://github.com/danielcrean4/talk-to-rag/issues?q=milestone%3A1.1+is%3Aopen)
 
 ## Later
 
