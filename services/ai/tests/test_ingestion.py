@@ -10,7 +10,7 @@ from talk_to_rag.ingestion import (
 )
 from talk_to_rag.ingestion.adapters.markdown_parser import MarkdownSourceParser
 from talk_to_rag.ingestion.adapters.paragraph_chunker import ParagraphChunker
-from talk_to_rag.ingestion.adapters.pdf_parser import PdfSourceParser
+from talk_to_rag.ingestion.adapters.pdf_parser import PdfSourceParser, repair_ligatures
 from talk_to_rag.ingestion.adapters.text_parser import PlainTextSourceParser
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
@@ -121,6 +121,59 @@ def test_pdf_parser_strips_control_characters(monkeypatch):
     pages = PdfSourceParser().parse(b"dummy pdf bytes")
 
     assert pages[0].text == "eigenvalues and eigenvectors\nnext line\twith a tab"
+
+
+@pytest.mark.parametrize(
+    ("extracted", "expected"),
+    [
+        ("\ufb00", "ff"),
+        ("\ufb01", "fi"),
+        ("\ufb02", "fl"),
+        ("\ufb03", "ffi"),
+        ("\ufb04", "ffl"),
+        ("\ufb05", "st"),
+        ("\ufb06", "st"),
+        ("the e\ufb00ect of \ufb01nite su\ufb03xes", "the effect of finite suffixes"),
+        ("the e\u21b5ect is di\u21b5erent", "the effect is different"),
+        ("Di\u21b5usion and \u00e9\u21b5et", "Diffusion and \u00e9ffet"),
+    ],
+)
+def test_repair_ligatures_spells_out_ligatures(extracted, expected):
+    assert repair_ligatures(extracted) == expected
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "press \u21b5 to confirm",
+        "\u21b5",
+        "line end\u21b5",
+        "\u21b5start",
+        "x2\u21b5y and a\u21b51",
+        "plain text with effect, office and 1-2-3",
+    ],
+)
+def test_repair_ligatures_leaves_other_text_alone(text):
+    assert repair_ligatures(text) == text
+
+
+def test_pdf_parser_repairs_ligatures(monkeypatch):
+    class StubReader:
+        pages = [object()]
+        page_labels = ["7"]
+        is_encrypted = False
+
+    monkeypatch.setattr("talk_to_rag.ingestion.adapters.pdf_parser.PdfReader", lambda _: StubReader())
+    monkeypatch.setattr(
+        "talk_to_rag.ingestion.adapters.pdf_parser._page_texts",
+        lambda _: ["the e\u21b5ect of \ufb01nite\r\nsu\ufb03xes, press \u21b5"],
+    )
+
+    pages = PdfSourceParser().parse(b"dummy pdf bytes")
+
+    assert pages[0].text == "the effect of finite\nsuffixes, press \u21b5"
+    assert pages[0].page_number == 1
+    assert pages[0].page_label == "7"
 
 
 def test_markdown_parser_tracks_heading_breadcrumbs():
