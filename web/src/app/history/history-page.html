@@ -1,0 +1,99 @@
+<nav class="list" aria-label="Past searches">
+  <div class="list-head">
+    <h2>History</h2>
+    <button type="button" (click)="refresh()">Refresh</button>
+  </div>
+  @if (listLoaded() && conversations().length === 0) {
+    <p class="quiet">No searches yet.</p>
+  }
+  <ul>
+    @for (item of conversations(); track item.id) {
+      <li>
+        <a
+          [routerLink]="['/history', item.id]"
+          [class.active]="item.id === id()"
+          [attr.aria-current]="item.id === id() ? 'page' : null"
+        >
+          <span class="title">{{ item.title }}</span>
+          <span class="date">{{ item.updatedAtUtc | date: 'MMM d, HH:mm' }}</span>
+        </a>
+      </li>
+    }
+  </ul>
+</nav>
+
+<section class="detail" aria-live="polite">
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+  @if (conversation(); as current) {
+    <header class="detail-head">
+      <h2>{{ current.title }}</h2>
+      <span class="quiet">{{ current.createdAtUtc | date: 'MMM d, y, HH:mm' }}</span>
+    </header>
+    @for (turn of turns(); track turn.id; let first = $first) {
+      <article class="turn">
+        @if (!first) {
+          @if (turn.question !== null) {
+            <h3 class="question">{{ turn.question }}</h3>
+          }
+          <span class="quiet">{{ turn.askedAtUtc | date: 'MMM d, HH:mm' }}</span>
+        } @else if (turn.question !== null && turn.question !== current.title) {
+          <h3 class="question">{{ turn.question }}</h3>
+        }
+        @if (turn.answer) {
+          <div class="answer">
+            <span class="label">Summary</span>
+            <app-answer-text [answer]="turn.answer" (cite)="showCitation(turn.id, $event)" />
+          </div>
+        }
+        @for (group of turn.groups; track group.sourceId) {
+          <section class="group">
+            <header>
+              @if (group.title) {
+                <a class="source" [href]="fileUrl(group)" target="_blank" rel="noopener">{{
+                  group.title
+                }}</a>
+              } @else {
+                <span class="source missing">Source no longer available</span>
+              }
+              <span class="quiet"
+                >{{ group.citations.length }}
+                {{ group.citations.length === 1 ? 'passage' : 'passages' }}</span
+              >
+            </header>
+            <ol>
+              @for (citation of group.citations; track citation.number) {
+                @let key = citationKey(turn.id, citation.number);
+                <li class="passage" [id]="'citation-' + key" [class.flash]="flashed() === key">
+                  <div class="where">
+                    <span class="number">[{{ citation.number }}]</span>
+                    <span class="place">{{ citation.location }}</span>
+                    @if (group.title) {
+                      <a [href]="fileUrl(group, citation)" target="_blank" rel="noopener">Open</a>
+                    }
+                  </div>
+                  <p class="excerpt" [class.open]="expanded().has(key)">{{ citation.content }}</p>
+                  <button
+                    type="button"
+                    class="link more"
+                    [attr.aria-expanded]="expanded().has(key)"
+                    (click)="toggle(key)"
+                  >
+                    {{ expanded().has(key) ? 'Show less' : 'Show all' }}
+                  </button>
+                </li>
+              }
+            </ol>
+          </section>
+        }
+      </article>
+    }
+  } @else if (loading()) {
+    <p class="quiet">Loading…</p>
+  } @else if (!id()) {
+    <p class="empty">
+      Pick a search on the left to see its question, the passages it found and any summary.
+    </p>
+  }
+</section>

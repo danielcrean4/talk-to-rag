@@ -1,0 +1,72 @@
+# Which models talk-to-rag can use, and which it uses by default.
+# No secrets or private hosts here: a provider names the environment variable that holds its key,
+# and private endpoints go in config/models.local.toml (gitignored), whose entries add to or
+# replace these. See config/models.local.example.toml.
+
+[defaults]
+chat = "local-small"
+embed = "local-embed"
+
+# --- Providers: where models are served -------------------------------------
+
+[providers.ollama]
+adapter = "openai_compatible"
+base_url = "http://localhost:11434/v1"
+# Set by compose.yaml: inside a container, the host's Ollama is at host.docker.internal.
+base_url_env = "OLLAMA_BASE_URL"
+# A local server that requires a key (llama.cpp or vLLM started with --api-key) can name the
+# environment variable holding it. The key itself never goes in this file:
+# api_key_env = "LOCAL_SERVER_API_KEY"
+
+[providers.offline]
+adapter = "fake"
+
+# --- Models: a name the code uses, mapped to a provider and the server's id ---
+
+[models.local-small]
+provider = "ollama"
+kind = "chat"
+name = "gemma3:1b"
+options = { temperature = 0.2 }
+
+[models.local-4b]
+provider = "ollama"
+kind = "chat"
+name = "gemma3:4b"
+options = { temperature = 0.2 }
+
+[models.local-phi]
+provider = "ollama"
+kind = "chat"
+name = "phi4-mini"
+options = { temperature = 0.2 }
+
+[models.local-llama]
+provider = "ollama"
+kind = "chat"
+name = "llama3.2:1b"
+options = { temperature = 0.2 }
+
+# Summaries, concept proposals and flashcards. It answers in its own words and follows a JSON
+# output format, which the 1B models do not do reliably.
+[models.local-3b]
+provider = "ollama"
+kind = "chat"
+name = "hf.co/mistralai/Ministral-3-3B-Instruct-2512-GGUF:Q4_K_M"
+options = { temperature = 0.1 }
+
+[models.local-embed]
+provider = "ollama"
+kind = "embed"
+name = "nomic-embed-text"
+options = { document_prefix = "search_document: ", query_prefix = "search_query: " }
+
+[models.fake-chat]
+provider = "offline"
+kind = "chat"
+name = "fake"
+
+[models.fake-embed]
+provider = "offline"
+kind = "embed"
+name = "fake"

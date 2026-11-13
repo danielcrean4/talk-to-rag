@@ -1,0 +1,50 @@
+[project]
+name = "talk-to-rag"
+version = "0.1.0"
+description = "Voice-enabled RAG search over your own documents, with page citations"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.162.0",
+    "openai>=1.40",
+    "pypdf>=6.21.4",
+    "pypdfium2>=5.15.2",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[project.optional-dependencies]
+# Real local speech models. Kept optional so tests and CI stay light.
+speech = [
+    "faster-whisper>=1.1",
+    # faster-whisper 1.2 still passes an argument that av 19 removed.
+    "av<19",
+    # Kokoro text-to-speech: onnxruntime runs the model, misaki turns English text into
+    # phonemes. Bare misaki on purpose: its "en" extra pulls in GPL espeak-ng.
+    "onnxruntime>=1.20",
+    "misaki>=0.9.4",
+    "spacy>=3.8,<3.9",
+    "num2words>=0.5.14",
+    "en-core-web-sm",
+]
+
+[tool.uv.sources]
+en-core-web-sm = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl" }
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=8",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 140
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]

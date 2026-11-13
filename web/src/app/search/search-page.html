@@ -1,0 +1,134 @@
+<form class="ask" role="search" (ngSubmit)="search()">
+  <input
+    name="query"
+    [(ngModel)]="query"
+    placeholder="Ask a question or search your sources"
+    aria-label="Question"
+    autocomplete="off"
+  />
+  <app-push-to-talk
+    (preview)="query = $event"
+    (transcribed)="heard($event)"
+    (failed)="voiceError.set($event)"
+  />
+  <button class="primary" type="submit" [disabled]="!query.trim() || session.searching()">
+    {{ session.searching() ? 'Searching…' : 'Search' }}
+  </button>
+</form>
+
+<div class="options">
+  <label>
+    Scope
+    <select name="scope" [(ngModel)]="notebookId">
+      <option value="">All ready sources</option>
+      @for (notebook of notebooks(); track notebook.id) {
+        <option [value]="notebook.id">{{ notebook.name }}</option>
+      }
+    </select>
+  </label>
+  @if (tags().length) {
+    <div
+      class="tag-scope"
+      role="group"
+      aria-label="Limit to tags"
+      title="Search only the sources with any of the picked tags"
+    >
+      <span>Tags</span>
+      @for (tag of tags(); track tag.id) {
+        <button
+          type="button"
+          class="pill"
+          [class.active]="tagIds().includes(tag.id)"
+          [attr.aria-pressed]="tagIds().includes(tag.id)"
+          (click)="toggleTag(tag.id)"
+        >
+          {{ tag.name }}
+        </button>
+      }
+    </div>
+  }
+  <span class="quiet">{{ settingsLine() }}</span>
+  <button
+    type="button"
+    [attr.aria-expanded]="settingsOpen()"
+    aria-controls="search-settings"
+    (click)="settingsOpen.set(!settingsOpen())"
+  >
+    Settings
+  </button>
+  @if (session.conversationId()) {
+    <button
+      type="button"
+      (click)="startOver()"
+      title="The next search starts a new conversation instead of following up on this one"
+    >
+      Start over
+    </button>
+  }
+</div>
+
+@if (settingsOpen()) {
+  <app-settings-panel id="search-settings" (saved)="settingsOpen.set(false)" />
+}
+
+@if (session.error() || voiceError()) {
+  <p class="error" role="alert">{{ session.error() || voiceError() }}</p>
+}
+
+@if (session.results(); as results) {
+  <div class="results-header">
+    <h2>Results for “{{ results.query }}”</h2>
+    @if (session.summary()?.error && !session.summarizing()) {
+      <button type="button" (click)="session.summarize()">Summarize again</button>
+    }
+  </div>
+
+  @if (session.summary(); as summary) {
+    <section
+      class="summary"
+      aria-label="Summary"
+      aria-live="polite"
+      [attr.aria-busy]="session.summarizing()"
+    >
+      <header>
+        <h3>Summary from these passages</h3>
+        <app-read-aloud [text]="summary.answer" />
+      </header>
+      @if (summary.answer) {
+        <app-answer-text [answer]="summary.answer" (cite)="showPassage($event)" />
+      } @else if (session.summarizing()) {
+        <p class="quiet">Reading the passages…</p>
+      }
+      @if (summary.error) {
+        <p class="error" role="alert">{{ summary.error }}</p>
+      }
+      @if (summary.cited; as cited) {
+        <p class="cited quiet">
+          @if (cited.length) {
+            Cited:
+            @for (number of cited; track number) {
+              <button type="button" class="link" (click)="showPassage(number)">
+                [{{ number }}]
+              </button>
+            }
+          } @else {
+            No passage cited.
+          }
+        </p>
+      }
+    </section>
+  }
+
+  @if (passageCount()) {
+    <app-result-groups [groups]="results.groups" [flashed]="flashed()" />
+  } @else {
+    <p class="empty">
+      No matching passages. Try other words, or switch the mode to hybrid in Settings.
+    </p>
+  }
+} @else if (!session.searching()) {
+  <p class="empty">
+    Ask a question to find the passages in your sources that answer it, with the page or section
+    they are on.
+  </p>
+}

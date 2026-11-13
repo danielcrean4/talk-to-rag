@@ -1,0 +1,210 @@
+<section class="toolbar">
+  <form (ngSubmit)="add()">
+    <input
+      name="newName"
+      [(ngModel)]="newName"
+      placeholder="Something you want to understand"
+      aria-label="New concept"
+    />
+    <button class="primary" type="submit" [disabled]="!newName.trim() || busy() !== ''">
+      Add concept
+    </button>
+  </form>
+  <p class="status" aria-live="polite">
+    @if (busy()) {
+      {{ busy() }}…
+    } @else if (proposedCount()) {
+      {{ proposedCount() }} suggested by the model, waiting for you
+    }
+  </p>
+</section>
+
+@if (error()) {
+  <p class="error" role="alert">{{ error() }}</p>
+}
+
+<div class="workspace">
+  <div class="canvas">
+    @if (loaded() && graph().concepts.length === 0) {
+      <div class="empty">
+        <h2>Nothing here yet</h2>
+        <p>Add something you want to understand, then ask the model what it builds on.</p>
+      </div>
+    } @else {
+      <div class="graph" [style.width.px]="layout().width" [style.height.px]="layout().height">
+        <svg [attr.width]="layout().width" [attr.height]="layout().height" aria-hidden="true">
+          @for (item of layout().links; track item.link.conceptId + item.link.prerequisiteId) {
+            <path
+              [attr.d]="item.path"
+              [class.proposed]="item.link.state === 'Proposed'"
+              [class.active]="isLinkedToSelection(item.link.conceptId, item.link.prerequisiteId)"
+            />
+          }
+        </svg>
+        @for (node of layout().nodes; track node.concept.id) {
+          <button
+            type="button"
+            class="node"
+            [class.proposed]="node.concept.state === 'Proposed'"
+            [class.selected]="node.concept.id === selectedId()"
+            [style.left.px]="node.x"
+            [style.top.px]="node.y"
+            [style.width.px]="nodeWidth"
+            [style.height.px]="nodeHeight"
+            [attr.aria-pressed]="node.concept.id === selectedId()"
+            (click)="select(node.concept)"
+          >
+            <span class="name">{{ node.concept.name }}</span>
+            @if (node.concept.state === 'Proposed') {
+              <span class="meta">suggested</span>
+            } @else if (node.concept.passageCount) {
+              <span class="meta">{{ node.concept.passageCount }} linked</span>
+            }
+          </button>
+        }
+      </div>
+      <p class="hint">Foundations sit at the bottom; each concept builds on the ones below it.</p>
+    }
+  </div>
+
+  @if (selected(); as concept) {
+    <aside class="panel" aria-label="Concept details">
+      <input
+        class="title"
+        #nameInput
+        [value]="concept.name"
+        (change)="rename(concept, nameInput.value)"
+        aria-label="Concept name"
+      />
+      <textarea
+        #summaryInput
+        rows="2"
+        [value]="concept.summary ?? ''"
+        placeholder="What is it, in a sentence?"
+        aria-label="Summary"
+        (change)="saveSummary(concept, summaryInput.value)"
+      ></textarea>
+
+      @if (concept.state === 'Proposed') {
+        <div class="proposal">
+          <span>Suggested by the model.</span>
+          <button class="primary" type="button" (click)="accept(concept)">Keep</button>
+          <button type="button" (click)="dismiss(concept)">Dismiss</button>
+        </div>
+      }
+
+      <h3>Builds on</h3>
+      @if (selectedPrerequisites().length === 0) {
+        <p class="quiet">No prerequisites yet.</p>
+      }
+      <ul class="links">
+        @for (item of selectedPrerequisites(); track item.concept.id) {
+          <li [class.proposed]="item.link.state === 'Proposed'">
+            <button type="button" class="link-name" (click)="select(item.concept)">
+              {{ item.concept.name }}
+            </button>
+            @if (item.link.state === 'Proposed' && item.concept.state === 'Accepted') {
+              <button type="button" (click)="addPrerequisite(concept, item.concept.id)">
+                Keep link
+              </button>
+            }
+            <button
+              type="button"
+              class="icon"
+              [attr.aria-label]="'Remove link to ' + item.concept.name"
+              (click)="removePrerequisite(concept, item.concept.id)"
+            >
+              ×
+            </button>
+          </li>
+        }
+      </ul>
+      <div class="row">
+        <button type="button" (click)="propose(concept)" [disabled]="busy() !== ''">
+          Suggest prerequisites
+        </button>
+      </div>
+      @if (linkable().length) {
+        <div class="row">
+          <select
+            [(ngModel)]="prerequisiteToAdd"
+            aria-label="Existing concept to link as a prerequisite"
+          >
+            <option value="">Link an existing concept…</option>
+            @for (option of linkable(); track option.id) {
+              <option [value]="option.id">{{ option.name }}</option>
+            }
+          </select>
+          <button
+            type="button"
+            (click)="addPrerequisite(concept, prerequisiteToAdd)"
+            [disabled]="!prerequisiteToAdd"
+          >
+            Link
+          </button>
+        </div>
+      }
+      <div class="row">
+        <input
+          [(ngModel)]="splitNames"
+          placeholder="Split into: limits, derivatives"
+          aria-label="Names to split this concept into, separated by commas"
+        />
+        <button type="button" (click)="split(concept)" [disabled]="!splitNames.trim()">
+          Split
+        </button>
+      </div>
+
+      <h3>Where to read about it</h3>
+      @if (passages().length === 0) {
+        <p class="quiet">No passages linked yet.</p>
+      }
+      <ul class="passages">
+        @for (passage of passages(); track passage.id) {
+          <li>
+            <div class="place">
+              <strong>{{ passage.sourceTitle }}</strong> {{ where(passage) }}
+            </div>
+            <p>{{ passage.snippet }}</p>
+            <div class="actions">
+              <a [href]="fileUrl(passage)" target="_blank" rel="noopener">Open</a>
+              <button type="button" (click)="unlinkPassage(concept, passage)">Unlink</button>
+            </div>
+          </li>
+        }
+      </ul>
+      <div class="row">
+        <button type="button" (click)="findPassages(concept)" [disabled]="busy() !== ''">
+          Find passages in my sources
+        </button>
+      </div>
+      @if (suggestions(); as found) {
+        @if (found.length === 0) {
+          <p class="quiet">Nothing found in your sources.</p>
+        }
+        <ul class="passages suggestions">
+          @for (suggestion of found; track $index) {
+            <li>
+              <div class="place">
+                <strong>{{ suggestion.sourceTitle }}</strong> {{ where(suggestion) }}
+              </div>
+              <p>{{ suggestion.snippet }}</p>
+              <div class="actions">
+                <a [href]="fileUrl(suggestion)" target="_blank" rel="noopener">Open</a>
+                @if (suggestion.linked) {
+                  <span class="quiet">Linked</span>
+                } @else {
+                  <button type="button" (click)="linkPassage(concept, suggestion)">Link</button>
+                }
+              </div>
+            </li>
+          }
+        </ul>
+      }
+
+      <div class="row danger">
+        <button type="button" (click)="remove(concept)">Delete concept</button>
+      </div>
+    </aside>
+  }
+</div>

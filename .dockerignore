@@ -1,0 +1,17 @@
+# The API image is built from the repo root (see compose.yaml) so it can build the Angular app
+# in web/ as well. Only those two trees are sent; everything else, private documents included, stays out.
+*
+!services/api/src/
+!web/
+
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+**/.angular/
+**/.venv/
+**/*.pdf
+**/*.epub
+**/data/
+**/library/
+web/e2e/

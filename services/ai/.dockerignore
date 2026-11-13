@@ -1,0 +1,6 @@
+.venv/
+**/__pycache__/
+.pytest_cache/
+tests/
+# Private endpoints never go into an image.
+config/models.local.toml

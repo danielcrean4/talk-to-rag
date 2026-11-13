@@ -1,0 +1,26 @@
+<header>
+  <span class="brand">Talk to RAG</span>
+  @if (auth.signedIn()) {
+    <nav>
+      <a routerLink="/sources" routerLinkActive="current" ariaCurrentWhenActive="page">Sources</a>
+      <a routerLink="/search" routerLinkActive="current" ariaCurrentWhenActive="page">Search</a>
+      <a routerLink="/history" routerLinkActive="current" ariaCurrentWhenActive="page">History</a>
+      <a
+        routerLink=""
+        routerLinkActive="current"
+        [routerLinkActiveOptions]="{ exact: true }"
+        ariaCurrentWhenActive="page"
+        >Concepts</a
+      >
+    </nav>
+    @if (!auth.singleUser) {
+      @if (auth.user(); as user) {
+        <span class="user" [title]="user.email">{{ user.displayName || user.email }}</span>
+      }
+      <button type="button" (click)="auth.signOut()">Sign out</button>
+    }
+  }
+</header>
+<main>
+  <router-outlet />
+</main>

@@ -1,0 +1,258 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 60rem;
+  margin: 0 auto;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.25rem;
+}
+.notebooks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  border-radius: 999px;
+}
+.notebooks.drop-ready .pill:not(.active):not(.new) {
+  border-style: dashed;
+}
+.pill {
+  border-radius: 999px;
+  padding: 0.3rem 0.8rem;
+}
+.pill.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+  font-weight: 600;
+}
+.pill.drop-target {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.pill.new {
+  color: var(--muted);
+  border-style: dashed;
+}
+.count {
+  color: var(--muted);
+  font-size: 0.75rem;
+  margin-left: 0.15rem;
+}
+.status {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+  min-height: 1.25rem;
+}
+.refresh {
+  margin-left: auto;
+}
+
+.tag-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+.group-label {
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin-right: 0.2rem;
+}
+
+.tag-editor {
+  display: grid;
+  gap: 0.5rem;
+}
+.tag-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+.tag-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+.tag-list .confirm {
+  justify-content: flex-start;
+}
+.tag-name {
+  flex: 1 1 8rem;
+  overflow-wrap: anywhere;
+}
+
+.tags {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0 0.15rem 0 0.55rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  font-size: 0.75rem;
+}
+.tag .remove {
+  border: 0;
+  background: none;
+  padding: 0 0.3rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.tag .remove:hover:not(:disabled) {
+  color: var(--danger);
+}
+
+.new-notebook {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.new-notebook input {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 1.25rem 1rem;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: 12px;
+  background: var(--surface);
+  cursor: pointer;
+  text-align: center;
+}
+.dropzone:hover,
+.dropzone.over {
+  border-color: var(--accent);
+}
+.dropzone.over {
+  background: var(--accent-soft);
+}
+.dropzone:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.sources {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+.source {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.7rem 1rem;
+  display: grid;
+  gap: 0.35rem;
+  cursor: grab;
+}
+.source.match {
+  border-color: var(--accent);
+}
+.source.failed {
+  border-color: var(--danger);
+}
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.title {
+  font-weight: 700;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 1rem;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+.failure {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+.actions:empty {
+  display: none;
+}
+.confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+}
+.confirm span {
+  flex: 1 1 14rem;
+  color: var(--danger);
+}
+button.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+  font-weight: 600;
+}
+@media (prefers-color-scheme: dark) {
+  button.danger {
+    color: #0d1320;
+  }
+}
+.actions select {
+  font-size: 0.8125rem;
+  padding: 0.3rem 0.5rem;
+}
+
+.status-badge {
+  flex-shrink: 0;
+  padding: 0 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid currentColor;
+}
+.status-badge.ready {
+  color: var(--ok);
+}
+.status-badge.failed {
+  color: var(--danger);
+}
+.status-badge.pending,
+.status-badge.processing {
+  color: var(--muted);
+}

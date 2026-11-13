@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.13.6"
+          enable-cache: true
+
+      # Python tests use the fake model adapters; the .NET integration tests start
+      # pgvector with Testcontainers on the runner's Docker. No Ollama needed.
+      - run: make test
+
+      - name: Lint and format check for the Python services
+        run: |
+          uvx ruff@0.17.5 check services/ai services/mcp
+          uvx ruff@0.17.5 format --check services/ai services/mcp
+
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.13.6"
+          enable-cache: true
+
+      # The stack expects Ollama on the host. On a runner it is a container that publishes
+      # the same port; only the embedding model is needed, since the run does no query rewriting.
+      - name: Start Ollama with the embedding model
+        run: |
+          docker run -d --name ollama -p 11434:11434 ollama/ollama
+          until docker exec ollama ollama list >/dev/null 2>&1; do sleep 1; done
+          docker exec ollama ollama pull nomic-embed-text
+
+      # Scores retrieval on the sample documents and fails under evaluation/minimum_scores.json.
+      - run: make eval
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: make test-web
+
+      - run: cd web && npm run format:check
+
+      - name: Start Ollama with the embedding model
+        run: |
+          docker run -d --name ollama -p 11434:11434 ollama/ollama
+          until docker exec ollama ollama list >/dev/null 2>&1; do sleep 1; done
+          docker exec ollama ollama pull nomic-embed-text
+
+      - name: Install the browser and its system libraries
+        run: cd web && npm ci && npx playwright install --with-deps chromium
+
+      # Builds the API image, which contains the production build of the Angular app, and
+      # uploads, searches, re-processes and deletes a source through the app it serves.
+      - run: make test-e2e

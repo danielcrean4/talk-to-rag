@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "talk-to-rag-audit": {
+      "command": "uv",
+      "args": ["run", "--project", "services/mcp", "talk-to-rag-audit-mcp"]
+    }
+  }
+}

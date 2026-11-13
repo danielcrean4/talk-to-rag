@@ -1,0 +1,5 @@
+{
+  "hybrid": { "hit@5": 0.85, "mrr": 0.7 },
+  "semantic": { "hit@5": 0.78, "mrr": 0.68 },
+  "keyword": { "hit@5": 0.83, "mrr": 0.62 }
+}

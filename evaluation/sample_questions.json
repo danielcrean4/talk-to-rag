@@ -1,0 +1,236 @@
+[
+  {
+    "id": "constitution-01",
+    "question": "who has the power of impeachment",
+    "target_source_title": "us-constitution",
+    "target_text": [
+      "sole Power of Impeachment"
+    ],
+    "category": "short"
+  },
+  {
+    "id": "constitution-02",
+    "question": "How old do you have to be to become president?",
+    "target_source_title": "us-constitution",
+    "target_text": [
+      "Age of thirty five Years"
+    ],
+    "category": "paraphrase"
+  },
+  {
+    "id": "constitution-03",
+    "question": "How long is a senator's term?",
+    "target_source_title": "us-constitution",
+    "target_text": [
+      "for six Years"
+    ],
+    "category": "paraphrase"
+  },
+  {
+    "id": "constitution-04",
+    "question": "Who is commander in chief of the army and navy?",
+    "target_source_title": "us-constitution",
+    "target_text": [
+      "Commander in Chief"
+    ],
+    "category": "short"
+  },
+  {
+    "id": "constitution-05",
+    "question": "What does it take to override a presidential veto?",
+    "target_source_title": "us-constitution",
+    "target_text": [
+      "two thirds of that House shall agree to pass the Bill"
+    ],
+    "category": "paraphrase"
+  },
+  {
+    "id": "constitution-06",
+    "question": "How can the constitution be amended?",
+    "target_source_title": "us-constitution",
+    "target_text": [
+      "propose Amendments to this Constitution"
+    ],
+    "category": "short"
+  },
+  {
+    "id": "constitution-07",
+    "question": "Can a state coin its own money or make treaties with other countries?",
+    "target_source_title": "us-constitution",
+    "target_text": [
+      "No State shall enter into any Treaty"
+    ],
+    "category": "paraphrase"
+  },
+  {
+    "id": "constitution-08",
+    "question": "what counts as treason against the United States",
+    "target_source_title": "us-constitution",
+    "target_text": [
+      "levying War against them"
+    ],
+    "category": "short"
+  },
+  {
+    "id": "constitution-09",
+    "question": "How many states had to ratify the constitution before it took effect?",
+    "target_source_title": "us-constitution",
+    "target_text": [
+      "Ratification of the Conventions of nine States"
+    ],
+    "category": "paraphrase"
+  },
+  {
+    "id": "constitution-10",
+    "question": "Is a religious test allowed as a qualification for public office?",
+    "target_source_title": "us-constitution",
+    "target_text": [
+      "no religious Test shall ever be required"
+    ],
+    "category": "short"
+  },
+  {
+    "id": "constitution-11",
+    "question": "How long do federal judges keep their jobs, and can their pay be cut?",
+    "target_source_title": "us-constitution",
+    "target_text": [
+      "hold their Offices during good behavior"
+    ],
+    "category": "paraphrase"
+  },
+  {
+    "id": "constitution-12",
+    "question": "What happens when someone charged with a crime flees to another state?",
+    "target_source_title": "us-constitution",
+    "target_text": [
+      "flee from Justice"
+    ],
+    "category": "paraphrase"
+  },
+  {
+    "id": "constitution-13",
+    "question": "Which branch of government can declare war?",
+    "target_source_title": "us-constitution",
+    "target_text": [
+      "To declare War"
+    ],
+    "category": "paraphrase"
+  },
+  {
+    "id": "constitution-14",
+    "question": "I want to know who gets to try an impeachment once the House has brought it, and what vote is needed to convict",
+    "target_source_title": "us-constitution",
+    "target_text": [
+      "sole Power to try all Impeachments"
+    ],
+    "category": "conversational"
+  },
+  {
+    "id": "constitution-15",
+    "question": "why was the constitution written, what goals does it state at the very start",
+    "target_source_title": "us-constitution",
+    "target_text": [
+      "more perfect Union"
+    ],
+    "category": "conversational"
+  },
+  {
+    "id": "declaration-01",
+    "question": "What rights does the Declaration say cannot be taken away?",
+    "target_source_title": "declaration-of-independence",
+    "target_text": [
+      "Life, Liberty and the pursuit of Happiness"
+    ],
+    "category": "paraphrase"
+  },
+  {
+    "id": "declaration-02",
+    "question": "What did the colonists complain about regarding taxes?",
+    "target_source_title": "declaration-of-independence",
+    "target_text": [
+      "imposing Taxes on us without our Consent"
+    ],
+    "category": "paraphrase"
+  },
+  {
+    "id": "declaration-03",
+    "question": "What complaint is made about trial by jury?",
+    "target_source_title": "declaration-of-independence",
+    "target_text": [
+      "benefits of Trial by Jury"
+    ],
+    "category": "short"
+  },
+  {
+    "id": "declaration-04",
+    "question": "When do people have the right to abolish their government?",
+    "target_source_title": "declaration-of-independence",
+    "target_text": [
+      "Right of the People to alter or to abolish it"
+    ],
+    "category": "short"
+  },
+  {
+    "id": "declaration-05",
+    "question": "What did the signers pledge to each other at the end?",
+    "target_source_title": "declaration-of-independence",
+    "target_text": [
+      "our Lives, our Fortunes and our sacred Honor"
+    ],
+    "category": "paraphrase"
+  },
+  {
+    "id": "declaration-06",
+    "question": "can you tell me what the king did with standing armies while the colonies were at peace",
+    "target_source_title": "declaration-of-independence",
+    "target_text": [
+      "Standing Armies"
+    ],
+    "category": "conversational"
+  },
+  {
+    "id": "gettysburg-01",
+    "question": "How long ago does Lincoln say the nation was founded?",
+    "target_source_title": "gettysburg-address",
+    "target_text": [
+      "Four score and seven years ago"
+    ],
+    "category": "paraphrase"
+  },
+  {
+    "id": "gettysburg-02",
+    "question": "What kind of government does Lincoln say shall not perish from the earth?",
+    "target_source_title": "gettysburg-address",
+    "target_text": [
+      "of the people, by the people, for the people"
+    ],
+    "category": "short"
+  },
+  {
+    "id": "inaugural-01",
+    "question": "What does Lincoln say about both sides praying to the same God?",
+    "target_source_title": "lincoln-second-inaugural",
+    "target_text": [
+      "pray to the same God"
+    ],
+    "category": "short"
+  },
+  {
+    "id": "inaugural-02",
+    "question": "How does Lincoln say the nation should treat its wounded, widows and orphans once the war ends?",
+    "target_source_title": "lincoln-second-inaugural",
+    "target_text": [
+      "With malice toward none"
+    ],
+    "category": "paraphrase"
+  },
+  {
+    "id": "inaugural-03",
+    "question": "What did Lincoln say was the cause of the war?",
+    "target_source_title": "lincoln-second-inaugural",
+    "target_text": [
+      "somehow the cause of the war"
+    ],
+    "category": "short"
+  }
+]

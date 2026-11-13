@@ -1,0 +1,15 @@
+# Overrides for the throwaway stacks that `make eval` and `make test-e2e` start next to the normal one:
+# other ports, and (through its own project name) its own empty database and file store.
+
+services:
+  postgres:
+    ports: !reset []
+
+  ai:
+    ports: !reset []
+
+  api:
+    environment:
+      Auth__SingleUser: "true"
+    ports: !override
+      - "127.0.0.1:5001:5000"

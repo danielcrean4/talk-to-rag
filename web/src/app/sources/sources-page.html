@@ -1,0 +1,287 @@
+<section class="toolbar">
+  <div class="notebooks" role="group" aria-label="Notebooks" [class.drop-ready]="dragging()">
+    <button
+      type="button"
+      class="pill"
+      [class.active]="!notebookId()"
+      [attr.aria-pressed]="!notebookId()"
+      (click)="showNotebook(null)"
+    >
+      All sources
+    </button>
+    @for (notebook of notebooks(); track notebook.id) {
+      <button
+        type="button"
+        class="pill"
+        [class.active]="notebookId() === notebook.id"
+        [class.drop-target]="dropTarget() === notebook.id"
+        [attr.aria-pressed]="notebookId() === notebook.id"
+        (click)="showNotebook(notebook.id)"
+        (dragover)="dragOverNotebook($event, notebook)"
+        (dragleave)="dropTarget.set(null)"
+        (drop)="dropOnNotebook($event, notebook)"
+      >
+        {{ notebook.name }} <span class="count">{{ notebook.sourceCount }}</span>
+      </button>
+    }
+    @if (!creating()) {
+      <button type="button" class="pill new" (click)="newNotebook()">New notebook</button>
+    }
+  </div>
+  <p class="status" aria-live="polite">
+    @if (busy()) {
+      {{ busy() }}…
+    } @else if (dragging() && notebooks().length) {
+      Drop on a notebook to add the source to it
+    }
+  </p>
+  <button type="button" class="refresh" (click)="refresh()">Refresh</button>
+</section>
+
+<div class="tag-filter" role="group" aria-label="Filter by tag">
+  <span class="group-label">Tags</span>
+  @for (tag of tags(); track tag.id) {
+    <button
+      type="button"
+      class="pill"
+      [class.active]="tagFilter().includes(tag.id)"
+      [attr.aria-pressed]="tagFilter().includes(tag.id)"
+      (click)="toggleTagFilter(tag.id)"
+    >
+      {{ tag.name }} <span class="count">{{ tagCount(sources(), tag.id) }}</span>
+    </button>
+  }
+  <button
+    type="button"
+    class="pill new"
+    [attr.aria-expanded]="editingTags()"
+    aria-controls="tag-editor"
+    (click)="toggleEditingTags()"
+  >
+    Edit tags
+  </button>
+</div>
+
+@if (editingTags()) {
+  <section id="tag-editor" class="tag-editor" aria-label="Edit tags">
+    <form class="new-notebook" (ngSubmit)="createTag()">
+      <input
+        name="tagName"
+        [(ngModel)]="newTagName"
+        placeholder="Tag name"
+        aria-label="Tag name"
+        required
+      />
+      <button class="primary" type="submit" [disabled]="!newTagName.trim() || busy() !== ''">
+        Add tag
+      </button>
+      <button type="button" (click)="toggleEditingTags()">Done</button>
+    </form>
+    @if (tags().length) {
+      <ul class="tag-list">
+        @for (tag of tags(); track tag.id) {
+          <li>
+            @if (confirmingTagDelete() === tag.id) {
+              <div class="confirm" role="group" [attr.aria-label]="'Confirm deleting ' + tag.name">
+                <span
+                  >Delete the tag {{ tag.name }}? It comes off every source; the sources stay.</span
+                >
+                <button
+                  type="button"
+                  class="danger"
+                  (click)="deleteTag(tag)"
+                  [disabled]="busy() !== ''"
+                >
+                  Delete
+                </button>
+                <button type="button" (click)="confirmingTagDelete.set(null)">Cancel</button>
+              </div>
+            } @else {
+              <span class="tag-name">{{ tag.name }}</span>
+              <button
+                type="button"
+                [attr.aria-label]="'Delete tag ' + tag.name"
+                (click)="confirmingTagDelete.set(tag.id)"
+                [disabled]="busy() !== ''"
+              >
+                Delete
+              </button>
+            }
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="quiet">
+        No tags yet. Add one, then put it on sources to filter this list and limit searches.
+      </p>
+    }
+  </section>
+}
+
+@if (creating()) {
+  <form class="new-notebook" (ngSubmit)="createNotebook()">
+    <input
+      name="name"
+      [(ngModel)]="newName"
+      placeholder="Notebook name"
+      aria-label="Notebook name"
+      required
+    />
+    <input
+      name="description"
+      [(ngModel)]="newDescription"
+      placeholder="Description (optional)"
+      aria-label="Notebook description"
+    />
+    <button class="primary" type="submit" [disabled]="!newName.trim() || busy() !== ''">
+      Create
+    </button>
+    <button type="button" (click)="creating.set(false)">Cancel</button>
+  </form>
+}
+
+@if (error()) {
+  <p class="error" role="alert">{{ error() }}</p>
+}
+
+<label
+  class="dropzone"
+  [class.over]="dropTarget() === 'files'"
+  (dragover)="dragOverFiles($event)"
+  (dragleave)="dropTarget.set(null)"
+  (drop)="dropFiles($event)"
+>
+  <input
+    #picker
+    type="file"
+    class="visually-hidden"
+    multiple
+    accept=".pdf,.md,.markdown,.txt,application/pdf,text/markdown,text/plain"
+    (change)="upload(picker.files); picker.value = ''"
+  />
+  <strong>Add sources</strong>
+  <span class="quiet">Drop PDF, Markdown or text files here, or click to choose them.</span>
+</label>
+
+@if (loaded() && visible().length === 0) {
+  <p class="empty">
+    @if (tagFilter().length) {
+      No sources here with these tags. Use Add a tag on a source to tag it.
+    } @else if (notebookId()) {
+      No sources in this notebook yet. Drag a source onto its name above to add it.
+    } @else {
+      No sources yet. Add a PDF, Markdown or text file to start.
+    }
+  </p>
+}
+
+<ul class="sources">
+  @for (source of visible(); track source.id) {
+    <li
+      class="source"
+      [class.match]="matched().has(source.id)"
+      [class.failed]="source.status === 'Failed'"
+      draggable="true"
+      (dragstart)="dragSource($event, source)"
+      (dragend)="endDrag()"
+    >
+      <div class="head">
+        <a
+          class="title"
+          [href]="fileUrl(source)"
+          target="_blank"
+          rel="noopener"
+          [title]="'Open ' + source.fileName"
+          >{{ source.title }}</a
+        >
+        <span class="status-badge" [class]="source.status.toLowerCase()">{{ source.status }}</span>
+      </div>
+      <div class="meta">
+        <span>{{ source.fileName }}</span>
+        <span>{{ formatBytes(source.sizeBytes) }}</span>
+        @if (source.status === 'Ready') {
+          <span>{{ source.chunkCount }} {{ source.chunkCount === 1 ? 'chunk' : 'chunks' }}</span>
+        }
+        <span>{{ source.createdAtUtc | date: 'MMM d, HH:mm' }}</span>
+        @if (matched().has(source.id)) {
+          <span class="badge">in last search</span>
+        }
+      </div>
+      @let sourceTags = tagsOn(source, tags());
+      @if (sourceTags.length) {
+        <ul class="tags" aria-label="Tags">
+          @for (tag of sourceTags; track tag.id) {
+            <li class="tag">
+              {{ tag.name }}
+              <button
+                type="button"
+                class="remove"
+                [attr.aria-label]="'Remove tag ' + tag.name + ' from ' + source.title"
+                (click)="untagSource(source, tag)"
+                [disabled]="busy() !== ''"
+              >
+                ×
+              </button>
+            </li>
+          }
+        </ul>
+      }
+      @if (failureNotice(source); as notice) {
+        <p class="failure">{{ notice }}</p>
+      }
+      @if (confirmingDelete() === source.id) {
+        <div class="confirm" role="group" aria-label="Confirm delete">
+          <span
+            >Delete {{ source.title }}? Its file, passages and the citations that point at it go
+            too.</span
+          >
+          <button type="button" class="danger" (click)="remove(source)" [disabled]="busy() !== ''">
+            Delete
+          </button>
+          <button type="button" (click)="confirmingDelete.set(null)">Cancel</button>
+        </div>
+      }
+      <div class="actions">
+        @if (reprocessLabel(source); as label) {
+          <button type="button" (click)="reprocess(source)" [disabled]="busy() !== ''">
+            {{ label }}
+          </button>
+        }
+        @if (confirmingDelete() !== source.id) {
+          <button
+            type="button"
+            (click)="confirmingDelete.set(source.id)"
+            [disabled]="busy() !== ''"
+          >
+            Delete
+          </button>
+        }
+        @if (notebooks().length) {
+          <select
+            #notebookPick
+            aria-label="Add to a notebook"
+            (change)="addToNotebook(source, notebookPick.value); notebookPick.value = ''"
+          >
+            <option value="">Add to notebook…</option>
+            @for (notebook of notebooks(); track notebook.id) {
+              <option [value]="notebook.id">{{ notebook.name }}</option>
+            }
+          </select>
+        }
+        @let addable = tagsOff(source, tags());
+        @if (addable.length) {
+          <select
+            #tagPick
+            aria-label="Add a tag"
+            (change)="tagSource(source, tagPick.value); tagPick.value = ''"
+          >
+            <option value="">Add a tag…</option>
+            @for (tag of addable; track tag.id) {
+              <option [value]="tag.id">{{ tag.name }}</option>
+            }
+          </select>
+        }
+      </div>
+    </li>
+  }
+</ul>

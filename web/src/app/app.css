@@ -1,0 +1,49 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+header {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.brand {
+  font-weight: 700;
+  white-space: nowrap;
+}
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  flex: 1;
+  font-size: 0.9375rem;
+}
+nav a.current {
+  font-weight: 600;
+  border-bottom: 2px solid var(--accent);
+}
+nav a {
+  color: var(--muted);
+  text-decoration: none;
+}
+nav a:hover,
+nav a.current {
+  color: var(--text);
+}
+.user {
+  color: var(--muted);
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+main {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+}

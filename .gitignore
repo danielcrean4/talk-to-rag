@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.env
+
+# Private sources and generated data: never commit
+sources.local.yaml
+data/
+library/
+*.pdf
+!services/ai/tests/fixtures/*.pdf
+*.epub
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+
+# Local model config with private endpoints
+services/ai/config/models.local.toml
+
+# Model weights
+*.gguf
+*.safetensors
+
+# .NET build output
+bin/
+obj/
+
+# Claude Code local state
+.claude/

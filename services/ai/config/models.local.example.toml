@@ -1,0 +1,17 @@
+# Copy to config/models.local.toml (gitignored) for endpoints that shouldn't be public.
+# Entries here add to or replace the ones in config/models.toml.
+
+# Another machine's Ollama, reached through an SSH tunnel so it never listens on the network:
+#   ssh -N -L 11435:localhost:11434 <user>@<host>
+[providers.remote]
+adapter = "openai_compatible"
+base_url = "http://localhost:11435/v1"
+
+[models.remote-4b]
+provider = "remote"
+kind = "chat"
+name = "gemma3:4b"
+
+# Uncomment to make it the default chat model.
+# [defaults]
+# chat = "remote-4b"
