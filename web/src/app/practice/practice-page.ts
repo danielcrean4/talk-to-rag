@@ -2,13 +2,13 @@ import { Component, computed, effect, inject, input, signal, untracked } from '@
 import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { Api, Concept, Question } from '../api';
-import { Auth, errorMessage } from '../auth';
-import { sourceFileUrl } from '../passages';
+import { errorMessage } from '../auth';
+import { Flashcard } from './flashcard';
 import {
   FLASHCARDS_PLATFORM,
-  MARKS,
   answered,
-  cardSource,
+  dueSummary,
+  isDue,
   masteryDetail,
   practiceOrder,
   roundSummary,
@@ -17,24 +17,20 @@ import {
 /** Steps through a concept's flashcards and records each answer as an attempt. */
 @Component({
   selector: 'app-practice-page',
-  imports: [RouterLink],
+  imports: [RouterLink, Flashcard],
   templateUrl: './practice-page.html',
   styleUrl: './practice-page.css',
 })
 export class PracticePage {
   private readonly api = inject(Api);
-  private readonly auth = inject(Auth);
 
   /** Bound from the `concepts/:id/practice` route. */
   readonly id = input.required<string>();
 
-  protected readonly marks = MARKS;
-  protected readonly cardSource = cardSource;
   protected readonly concept = signal<Concept | null>(null);
   protected readonly questions = signal<Question[]>([]);
   protected readonly deck = signal<Question[]>([]);
   protected readonly index = signal(0);
-  protected readonly revealed = signal(false);
   protected readonly scores = signal<number[]>([]);
   protected readonly loaded = signal(false);
   protected readonly busy = signal('');
@@ -49,16 +45,19 @@ export class PracticePage {
     return concept ? masteryDetail(concept.mastery) : '';
   });
   protected readonly summary = computed(() => roundSummary(this.scores()));
+  /** Counted when the cards load or an answer comes back, not as the clock passes a due time. */
+  protected readonly dueText = computed(() => {
+    const now = new Date();
+    const questions = this.questions();
+    const due = questions.filter((question) => isDue(question, now)).length;
+    return dueSummary(due, questions.filter((question) => question.dueAtUtc === null).length);
+  });
 
   constructor() {
     effect(() => {
       const id = this.id();
       untracked(() => this.load(id));
     });
-  }
-
-  reveal(): void {
-    this.revealed.set(true);
   }
 
   rate(question: Question, score: number): void {
@@ -69,21 +68,21 @@ export class PracticePage {
         this.busy.set('');
         this.concept.update((concept) => concept && { ...concept, mastery: result.mastery });
         this.questions.update((all) =>
-          all.map((item) => (item.id === question.id ? answered(item, score) : item)),
+          all.map((item) =>
+            item.id === question.id ? answered(item, score, result.dueAtUtc) : item,
+          ),
         );
         this.scores.update((scores) => [...scores, score]);
-        this.revealed.set(false);
         this.index.update((index) => index + 1);
       },
       error: (error) => this.fail(error),
     });
   }
 
-  /** Starts a new round, worst-known cards first. */
+  /** Starts a new round, due cards first. */
   again(): void {
-    this.deck.set(practiceOrder(this.questions()));
+    this.deck.set(practiceOrder(this.questions(), new Date()));
     this.index.set(0);
-    this.revealed.set(false);
     this.scores.set([]);
   }
 
@@ -102,10 +101,6 @@ export class PracticePage {
       },
       error: (error) => this.fail(error),
     });
-  }
-
-  fileUrl(sourceId: string, question: Question): string {
-    return sourceFileUrl(sourceId, this.auth.token(), { page: question.pageNumber ?? undefined });
   }
 
   private load(conceptId: string): void {

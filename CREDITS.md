@@ -56,6 +56,7 @@ Versions are the ones locked or pinned when the entry was written; `services/ai/
 | [Npgsql.EntityFrameworkCore.PostgreSQL](https://github.com/npgsql/efcore.pg) | 10.0.3 | [PostgreSQL License](https://github.com/npgsql/efcore.pg/blob/main/LICENSE) | EF Core provider for Postgres | © The Npgsql Development Team |
 | [Pgvector.EntityFrameworkCore](https://github.com/pgvector/pgvector-dotnet) | 0.3.0 | MIT | `vector` type and HNSW index in EF Core | © Andrew Kane |
 | [EFCore.NamingConventions](https://github.com/efcore/EFCore.NamingConventions) | 10.0.1 | Apache-2.0 | snake_case table and column names | © Shay Rojansky and contributors |
+| [FSRS](https://github.com/open-spaced-repetition/py-fsrs) (algorithm and default parameters, ported by hand from py-fsrs 5.1.3; no package) | FSRS-5 | MIT | `Practice/Fsrs.cs`: when a flashcard is due again | © Open Spaced Repetition |
 
 ### Web app (`web/`, built into the API image)
 

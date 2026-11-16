@@ -10,6 +10,9 @@
       Add concept
     </button>
   </form>
+  @if (reviewText()) {
+    <a class="button" routerLink="/review">Review: {{ reviewText() }}</a>
+  }
   <p class="status" aria-live="polite">
     @if (busy()) {
       {{ busy() }}…
@@ -65,6 +68,9 @@
                 @if (node.concept.passageCount) {
                   · {{ node.concept.passageCount }} linked
                 }
+                @if (dueFor(node.concept.id).due; as due) {
+                  · <span class="due">{{ due }} due</span>
+                }
               </span>
             }
           </button>
@@ -109,6 +115,10 @@
       </div>
       <div class="row">
         <a class="button" [routerLink]="['/concepts', concept.id, 'practice']">Flashcards</a>
+        @let cards = dueFor(concept.id);
+        @if (cards.due || cards.new) {
+          <span class="quiet">{{ dueSummary(cards.due, cards.new) }}</span>
+        }
       </div>
 
       <h3>Builds on</h3>

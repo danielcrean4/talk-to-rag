@@ -109,11 +109,82 @@ public class PracticeServiceTests
         await Assert.ThrowsAsync<NotFoundException>(() => service.DeleteQuestionAsync(question.Id, default));
     }
 
+    [Fact]
+    public async Task ListDueAsync_ListsDueQuestionsEarliestFirst_ThenNewOnes_AndCountsThemPerConcept()
+    {
+        var pooling = AddConcept("Pooling");
+        var vectors = AddConcept("Vectors");
+        var service = CreateService();
+        var known = await service.AddQuestionAsync(pooling.Id, new CreateQuestionRequest("Known", "A"), default);
+        var missed = await service.AddQuestionAsync(pooling.Id, new CreateQuestionRequest("Missed", "A"), default);
+        var fresh = await service.AddQuestionAsync(vectors.Id, new CreateQuestionRequest("Fresh", "A"), default);
+
+        var gotIt = await service.RecordAttemptAsync(new RecordAttemptRequest(known.Id, null, "flashcards", 1), default);
+        var miss = await service.RecordAttemptAsync(new RecordAttemptRequest(missed.Id, null, "flashcards", 0), default);
+        var game = await service.RecordAttemptAsync(new RecordAttemptRequest(null, vectors.Id, "game", 1), default);
+        Assert.Equal(_practice.Attempts[0].AnsweredAtUtc.AddDays(3), gotIt.DueAtUtc);
+        Assert.Equal(_practice.Attempts[1].AnsweredAtUtc.AddDays(1), miss.DueAtUtc);
+        Assert.Null(game.DueAtUtc);
+
+        var today = await service.ListDueAsync(default);
+        Assert.Equal(["Fresh"], today.Questions.Select(q => q.Prompt));
+        Assert.Null(today.Questions[0].DueAtUtc);
+        Assert.Equal((0, 1), (today.DueCount, today.NewCount));
+        Assert.Equal([new DueConceptDto(vectors.Id, "Vectors", 0, 1)], today.Concepts);
+
+        _clock.Skip(TimeSpan.FromDays(3));
+        var later = await service.ListDueAsync(default);
+        Assert.Equal(["Missed", "Known", "Fresh"], later.Questions.Select(q => q.Prompt));
+        Assert.Equal(miss.DueAtUtc, later.Questions[0].DueAtUtc);
+        Assert.Equal(
+            [new DueConceptDto(pooling.Id, "Pooling", 2, 0), new DueConceptDto(vectors.Id, "Vectors", 0, 1)],
+            later.Concepts);
+        Assert.Equal(fresh.Id, later.Questions[2].Id);
+    }
+
+    [Fact]
+    public async Task ListDueAsync_OffersAtMostTenNewQuestions_ButCountsThemAll()
+    {
+        var concept = AddConcept("Pooling");
+        var service = CreateService();
+        for (var i = 0; i < PracticeService.NewPerReview + 2; i++)
+        {
+            await service.AddQuestionAsync(concept.Id, new CreateQuestionRequest($"Q{i}", "A"), default);
+        }
+
+        var due = await service.ListDueAsync(default);
+
+        Assert.Equal(PracticeService.NewPerReview, due.Questions.Count);
+        Assert.Equal("Q0", due.Questions[0].Prompt);
+        Assert.Equal(PracticeService.NewPerReview + 2, due.NewCount);
+        Assert.Equal(PracticeService.NewPerReview + 2, Assert.Single(due.Concepts).New);
+    }
+
+    [Fact]
+    public async Task ListDueAsync_LeavesOutOtherUsersAndRejectedConcepts()
+    {
+        var kept = AddConcept("Pooling");
+        var rejected = AddConcept("Dropped");
+        rejected.State = ProposalState.Rejected;
+        var service = CreateService();
+        await service.AddQuestionAsync(kept.Id, new CreateQuestionRequest("Mine", "A"), default);
+        _practice.Questions.Add(new Question { Id = Guid.NewGuid(), UserId = _currentUser.UserId, ConceptId = rejected.Id, Prompt = "Hidden", Answer = "A" });
+
+        Assert.Equal(["Mine"], (await service.ListDueAsync(default)).Questions.Select(q => q.Prompt));
+
+        _currentUser.UserId = Guid.NewGuid();
+        var other = await service.ListDueAsync(default);
+        Assert.Empty(other.Questions);
+        Assert.Empty(other.Concepts);
+    }
+
     private sealed class AdvancingClock : TimeProvider
     {
         private DateTimeOffset _now = new(2026, 11, 12, 12, 0, 0, TimeSpan.Zero);
 
         public override DateTimeOffset GetUtcNow() => _now = _now.AddMinutes(1);
+
+        public void Skip(TimeSpan span) => _now += span;
     }
 
     private sealed class InMemoryPractice : IPracticeRepository
@@ -124,6 +195,9 @@ public class PracticeServiceTests
 
         public Task<List<Question>> ListQuestionsAsync(Guid conceptId, Guid userId, CancellationToken cancellationToken) =>
             Task.FromResult(Questions.Where(q => q.ConceptId == conceptId && q.UserId == userId).ToList());
+
+        public Task<List<Question>> ListQuestionsForUserAsync(Guid userId, CancellationToken cancellationToken) =>
+            Task.FromResult(Questions.Where(q => q.UserId == userId).ToList());
 
         public Task<Question?> FindQuestionAsync(Guid id, Guid userId, CancellationToken cancellationToken) =>
             Task.FromResult(Questions.FirstOrDefault(q => q.Id == id && q.UserId == userId));

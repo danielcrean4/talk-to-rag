@@ -8,5 +8,7 @@ public interface IPracticeService
     /// <summary>Has the local model write flashcards from the passages linked to a concept.</summary>
     Task<IReadOnlyList<QuestionDto>> GenerateQuestionsAsync(Guid conceptId, CancellationToken cancellationToken);
     Task DeleteQuestionAsync(Guid id, CancellationToken cancellationToken);
+    /// <summary>The user's questions that FSRS says are due now, and some never answered.</summary>
+    Task<DueCardsDto> ListDueAsync(CancellationToken cancellationToken);
     Task<AttemptResultDto> RecordAttemptAsync(RecordAttemptRequest request, CancellationToken cancellationToken);
 }

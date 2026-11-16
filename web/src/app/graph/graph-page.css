@@ -105,6 +105,10 @@
   font-size: 0.6875rem;
   color: var(--muted);
 }
+.node .due {
+  color: var(--text);
+  font-weight: 600;
+}
 
 .hint,
 .quiet {
