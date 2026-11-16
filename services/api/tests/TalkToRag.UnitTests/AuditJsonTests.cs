@@ -36,6 +36,17 @@ public class AuditJsonTests
     }
 
     [Fact]
+    public void ToNode_KeepsTheTraceAndTheError_WhenTheStreamFailed()
+    {
+        var stream = "data: {\"token\": \"TD \"}\n\ndata: {\"trace\": [{\"model\": \"local-3b\", \"error\": \"timed out\"}]}\n\ndata: {\"error\": \"timed out\"}\n\n";
+
+        var node = AuditJson.ToNode(stream, isEventStream: true);
+
+        Assert.Equal("timed out", node["trace"]![0]!["error"]!.GetValue<string>());
+        Assert.Equal("timed out", node["events"]![0]!["error"]!.GetValue<string>());
+    }
+
+    [Fact]
     public void Redact_ReplacesPassageTextEverywhere_IncludingInsideThePrompt_AndLeavesTheOriginalsAlone()
     {
         var request = AuditJson.ToNode("""{"question":"What is TD?","passages":[{"n":1,"content":"TD learning bootstraps."},{"n":2,"content":"Monte Carlo waits for the return."}]}""");

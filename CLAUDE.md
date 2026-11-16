@@ -77,6 +77,10 @@ A source may carry a free-text `License` and a `SourceUrl` (where it came from; 
 
 `DELETE /api/sources/{id}` deletes the row and then the blob. Database cascades remove its chunks, citations, notebook and tag links and concept passages; questions keep their text with `source_id` set null. The worker writes status with targeted updates and skips a source deleted mid-ingestion.
 
+### Time limits
+
+`HttpAiClient` gives each call to the AI service its own limit through a linked `CancellationTokenSource`; the `HttpClient` itself has none. Ingestion gets `AiService:IngestTimeoutSeconds` (1800). Every other call is made while someone waits and gets `AiService:InteractiveTimeoutSeconds` (180), including the whole of a streamed summary. Running out throws `AiServiceUnavailableException` (503, "The model did not answer in time."), or, once a summary stream has started, ends it with a `data: {"error": …}` event.
+
 ### Search flow
 
 - `POST /api/search` → `SearchService` first calls the AI service's `POST /v1/rag/expand-query`. Without expansion that returns the embedded query; with `expand: true`, gemma rewrites the question into 2–3 queries and each one is embedded.
@@ -102,7 +106,7 @@ The review schedule is not stored either. `Fsrs` (`Application/Practice/Fsrs.cs`
 
 ### Audit log
 
-Every exchange with the AI service is stored in `ai_calls` by `AiAuditHandler`, a `DelegatingHandler` on the AI `HttpClient`, so no call site can forget to log. A row belongs to the signed-in user; for ingestion, which runs in the background worker, the worker sets the source's owner with `BackgroundAuditUser` (an `AsyncLocal` scope) around the call, and the handler uses it when there is no signed-in user. Python adds a `trace` list to its responses (`tracing.py`: one entry per model call, with the messages sent and the completion), and the streamed summary sends it as a `data: {"trace": …}` line that `SearchService` skips. Each row keeps the exchange twice: as sent, and redacted by `AuditJson`. Redaction replaces passage text with a placeholder giving its length. It does the same to earlier answers sent as context for a follow-up search, and to any run of 40 or more letters a model copied from either into its reply, whatever happened to the spacing, punctuation or capitals.
+Every exchange with the AI service is stored in `ai_calls` by `AiAuditHandler`, a `DelegatingHandler` on the AI `HttpClient`, so no call site can forget to log. A row belongs to the signed-in user; for ingestion, which runs in the background worker, the worker sets the source's owner with `BackgroundAuditUser` (an `AsyncLocal` scope) around the call, and the handler uses it when there is no signed-in user. Python adds a `trace` list to its responses (`tracing.py`: one entry per model call, with the messages sent and the completion), and the streamed summary sends it as a `data: {"trace": …}` line that `SearchService` skips, before the `done` event or, when the model fails, before the `error` event. Each row keeps the exchange twice: as sent, and redacted by `AuditJson`. Redaction replaces passage text with a placeholder giving its length. It does the same to earlier answers sent as context for a follow-up search, and to any run of 40 or more letters a model copied from either into its reply, whatever happened to the spacing, punctuation or capitals.
 
 The `audit` schema is what an outside reader may see: views over the redacted columns and over sources, chunks, messages, citations, concepts, questions and attempts, none of which expose source text. `audit.sources` does show each source's license and origin URL, which describe the source rather than quote it. The `talk_to_rag_auditor` role can only `SELECT` from that schema. Text a model wrote from passages (assistant messages, generated questions) appears in the table views by length only; read it, redacted, through `audit.ai_calls`, `audit.model_calls` and `audit.answers`. When a table gains a column an auditor should see, add it to the view in a new migration.
 
@@ -139,6 +143,7 @@ Commands, all needing Node on the host: `make web` runs the dev server on **4201
 - Model choice comes from the explicit argument, then the `TALK_TO_RAG_CHAT` / `TALK_TO_RAG_EMBED` environment variables, then `[defaults]`.
 - `TALK_TO_RAG_MODELS` points at a single config file in place of the layered pair.
 - A provider's `base_url_env` overrides its URL; compose sets `OLLAMA_BASE_URL`.
+- A provider's `timeout_seconds` (default 120; for a stream, the longest wait between two pieces) and `max_retries` (default 0) go to the OpenAI client in place of the library's 600 seconds and 2 retries. The timeout stays under the API's interactive limit, so a stalled Ollama comes back as a 503 that names the model.
 - nomic embeddings use the `search_document: ` / `search_query: ` prefixes, so call `embed_documents` and `embed_query` correctly.
 - Tests use the `fake` adapter and `monkeypatch`, so they need neither Ollama nor Docker.
 

@@ -97,7 +97,7 @@ sequenceDiagram
     UI->>Api: GET /api/search/{conversationId}/summary/stream (or POST .../summary)
     Api->>Ai: POST /v1/rag/answer/stream (or /v1/rag/answer)
     Note over Ai: Ministral 3 3B (local-3b) answers with [n] markers<br/>numbers that match no passage are dropped
-    Ai-->>Api: SSE lines: tokens, then the trace, then done with cited
+    Ai-->>Api: SSE lines: tokens, then the trace, then done with cited<br/>(if the model fails: the trace, then an error)
     Api-->>UI: the same lines, without the trace
     Api->>Db: INSERT assistant message and the citations it used
 ```
@@ -119,6 +119,12 @@ The SQL in `SearchRepository`:
 - `TALK_TO_RAG_STT=faster-whisper` and `TALK_TO_RAG_TTS=kokoro` turn these on; `compose.yaml` sets both. Without them the routes answer 503.
 - The web app reads summaries aloud through `/api/speech/synthesize`, and use the browser's `speechSynthesis` only when that answers 503.
 
+## Time limits
+
+- `HttpAiClient` gives each call to the AI service its own limit. Ingestion has `AiService:IngestTimeoutSeconds` (default 1800). Every other call, made while someone waits, has `AiService:InteractiveTimeoutSeconds` (default 180): query expansion, both summary routes, transcription, synthesis, concept proposals and flashcards.
+- A call that runs out of time throws `AiServiceUnavailableException`, which the API answers with 503 "The model did not answer in time." The worker marks the source as failed. A streamed summary has to finish within the limit too; if the stream has already started, it ends with a `data: {"error": …}` event instead.
+- The AI service's OpenAI client takes `timeout_seconds` (default 120) and `max_retries` (default 0) from its provider in `config/models.toml`. For a streamed reply the timeout is the longest wait between two pieces. It is shorter than the API's interactive limit, so a stalled Ollama comes back as a 503 that names the model.
+
 ## Concepts and practice
 
 - A `Concept` belongs to a user. `ConceptPrerequisite` rows ("understand B before A") make a graph, and `ConceptService` refuses an edge that would close a loop.
@@ -134,7 +140,7 @@ The SQL in `SearchRepository`:
 
 - `AiAuditHandler`, a `DelegatingHandler` on the API's AI-service `HttpClient`, writes every request and response to `ai_calls`, once as sent and once redacted by `AuditJson`.
 - A row's `user_id` is the signed-in user. Ingestion runs outside a request, so `SourceIngestionWorker` names the source's owner with `BackgroundAuditUser` around the call, and the handler uses that when there is no signed-in user.
-- The AI service adds a `trace` list to its responses (`tracing.py`), one entry per model call with the messages and the completion.
+- The AI service adds a `trace` list to its responses (`tracing.py`), one entry per model call with the messages and the completion. A streamed summary sends it as an event before `done`, or before `error` when the model fails, so a failed call is stored too.
 - Redaction replaces passage text, and earlier answers sent as context, with a placeholder that gives the length. It also replaces any run of 40 or more letters and digits that a model reply copied from them.
 - The `audit` schema holds views over the redacted columns and over the tables, without source text. The role `talk_to_rag_auditor` may only `SELECT` from it.
 - `services/mcp` exposes that schema to an MCP client over stdio (`.mcp.json`) with the tools `describe`, `query` and `get_ai_call`. Each call opens a connection as the auditor role and runs in a read-only transaction that is rolled back.
