@@ -101,10 +101,10 @@ describe('masteryDetail', () => {
 
   it('gives the level, attempts and recent score', () => {
     expect(masteryDetail(mastery({ level: 'Learning', attempts: 1, recentScore: 0.5 }))).toBe(
-      'Learning: 1 attempt, recent score 50%',
+      '1 attempt, recent score 50%',
     );
     expect(masteryDetail(mastery({ level: 'Solid', attempts: 4, recentScore: 0.875 }))).toBe(
-      'Solid: 4 attempts, recent score 88%',
+      '4 attempts, recent score 88%',
     );
   });
 });

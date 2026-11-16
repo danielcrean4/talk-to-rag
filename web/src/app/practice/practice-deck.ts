@@ -45,7 +45,7 @@ export function cardSource(question: Question): string | null {
   return [question.sourceTitle, locationLabel(question, paged)].filter(Boolean).join(' · ');
 }
 
-/** "Not practised yet", or the level with the number of attempts and the recent score. */
+/** "Not practised yet", or the number of attempts and the recent score. Shown beside the level badge. */
 export function masteryDetail(mastery: Mastery): string {
   if (mastery.attempts === 0) {
     return 'Not practised yet';
@@ -53,7 +53,7 @@ export function masteryDetail(mastery: Mastery): string {
   const attempts = `${mastery.attempts} ${mastery.attempts === 1 ? 'attempt' : 'attempts'}`;
   const score =
     mastery.recentScore === null ? '' : `, recent score ${Math.round(mastery.recentScore * 100)}%`;
-  return `${mastery.level}: ${attempts}${score}`;
+  return `${attempts}${score}`;
 }
 
 /** How a finished round went, such as "2 of 3 right". Only "Got it" counts as right. */
