@@ -101,8 +101,17 @@
       @if (concept.state === 'Proposed') {
         <div class="proposal">
           <span>Suggested by the model.</span>
-          <button class="primary" type="button" (click)="accept(concept)">Keep</button>
-          <button type="button" (click)="dismiss(concept)">Dismiss</button>
+          <button
+            class="primary"
+            type="button"
+            (click)="accept(concept)"
+            [disabled]="busy() !== ''"
+          >
+            Keep
+          </button>
+          <button type="button" (click)="dismiss(concept)" [disabled]="busy() !== ''">
+            Dismiss
+          </button>
         </div>
       }
 
@@ -132,7 +141,11 @@
               {{ item.concept.name }}
             </button>
             @if (item.link.state === 'Proposed' && item.concept.state === 'Accepted') {
-              <button type="button" (click)="addPrerequisite(concept, item.concept.id)">
+              <button
+                type="button"
+                (click)="addPrerequisite(concept, item.concept.id)"
+                [disabled]="busy() !== ''"
+              >
                 Keep link
               </button>
             }
@@ -141,6 +154,7 @@
               class="icon"
               [attr.aria-label]="'Remove link to ' + item.concept.name"
               (click)="removePrerequisite(concept, item.concept.id)"
+              [disabled]="busy() !== ''"
             >
               ×
             </button>
@@ -166,7 +180,7 @@
           <button
             type="button"
             (click)="addPrerequisite(concept, prerequisiteToAdd)"
-            [disabled]="!prerequisiteToAdd"
+            [disabled]="!prerequisiteToAdd || busy() !== ''"
           >
             Link
           </button>
@@ -178,7 +192,11 @@
           placeholder="Split into: limits, derivatives"
           aria-label="Names to split this concept into, separated by commas"
         />
-        <button type="button" (click)="split(concept)" [disabled]="!splitNames.trim()">
+        <button
+          type="button"
+          (click)="split(concept)"
+          [disabled]="!splitNames.trim() || busy() !== ''"
+        >
           Split
         </button>
       </div>
@@ -196,7 +214,13 @@
             <p>{{ passage.snippet }}</p>
             <div class="actions">
               <a [href]="fileUrl(passage)" target="_blank" rel="noopener">Open</a>
-              <button type="button" (click)="unlinkPassage(concept, passage)">Unlink</button>
+              <button
+                type="button"
+                (click)="unlinkPassage(concept, passage)"
+                [disabled]="busy() !== ''"
+              >
+                Unlink
+              </button>
             </div>
           </li>
         }
@@ -222,7 +246,13 @@
                 @if (suggestion.linked) {
                   <span class="quiet">Linked</span>
                 } @else {
-                  <button type="button" (click)="linkPassage(concept, suggestion)">Link</button>
+                  <button
+                    type="button"
+                    (click)="linkPassage(concept, suggestion)"
+                    [disabled]="busy() !== ''"
+                  >
+                    Link
+                  </button>
                 }
               </div>
             </li>
@@ -231,7 +261,9 @@
       }
 
       <div class="row danger">
-        <button type="button" (click)="remove(concept)">Delete concept</button>
+        <button type="button" (click)="remove(concept)" [disabled]="busy() !== ''">
+          Delete concept
+        </button>
       </div>
     </aside>
   }

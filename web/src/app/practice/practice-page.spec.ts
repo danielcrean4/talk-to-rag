@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Subject } from 'rxjs';
-import { Api, Concept, ConceptDetails, Question } from '../api';
+import { Api, AttemptResult, Concept, ConceptDetails, Question } from '../api';
 import { PracticePage } from './practice-page';
 
 const concept = (id: string): Concept => ({
@@ -34,6 +34,7 @@ const question = (id: string, conceptId: string): Question => ({
 describe('PracticePage', () => {
   const details = new Map<string, Subject<ConceptDetails>>();
   const questions = new Map<string, Subject<Question[]>>();
+  const attempts: { questionId: string; response: Subject<AttemptResult> }[] = [];
 
   function open(fixture: ComponentFixture<PracticePage>, id: string): void {
     fixture.componentRef.setInput('id', id);
@@ -50,6 +51,7 @@ describe('PracticePage', () => {
   beforeEach(() => {
     details.clear();
     questions.clear();
+    attempts.length = 0;
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
@@ -64,6 +66,11 @@ describe('PracticePage', () => {
             questions: (id: string) => {
               questions.set(id, new Subject());
               return questions.get(id);
+            },
+            recordAttempt: (questionId: string) => {
+              const response = new Subject<AttemptResult>();
+              attempts.push({ questionId, response });
+              return response;
             },
           },
         },
@@ -82,5 +89,22 @@ describe('PracticePage', () => {
 
     expect(page['concept']()?.id).toBe('b');
     expect(page['questions']().map((item) => item.id)).toEqual(['b1', 'b2']);
+  });
+
+  it('ignores a second mark while the first is saving, and a mark for a card already passed', () => {
+    const fixture = TestBed.createComponent(PracticePage);
+    open(fixture, 'a');
+    respond('a');
+    const page = fixture.componentInstance;
+    const first = page['card']()!;
+
+    page.rate(first, 1);
+    page.rate(first, 1);
+    expect(attempts.map((item) => item.questionId)).toEqual([first.id]);
+
+    attempts[0].response.next({ conceptId: 'a', mastery: concept('a').mastery, dueAtUtc: null });
+    expect(page['index']()).toBe(1);
+    page.rate(first, 0);
+    expect(attempts).toHaveLength(1);
   });
 });

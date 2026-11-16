@@ -62,7 +62,11 @@ export class PracticePage {
     });
   }
 
+  /** Ignores a mark while the last one is saving, or for a card no longer shown. */
   rate(question: Question, score: number): void {
+    if (this.busy() || question.id !== this.card()?.id) {
+      return;
+    }
     this.busy.set('Saving');
     this.error.set('');
     this.api.recordAttempt(question.id, FLASHCARDS_PLATFORM, score).subscribe({

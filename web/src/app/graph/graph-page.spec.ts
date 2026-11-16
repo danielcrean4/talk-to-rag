@@ -62,4 +62,43 @@ describe('GraphPage', () => {
     expect(page.selectedId()).toBe('b');
     expect(page.passages().map((item) => item.id)).toEqual(['of b']);
   });
+
+  it('disables every action on the selected concept while one is running', () => {
+    const fixture = TestBed.createComponent(GraphPage);
+    fixture.detectChanges();
+    const page = fixture.componentInstance;
+    const proposed: Concept = { ...concept('a'), state: 'Proposed' };
+    page.graph.set({
+      concepts: [proposed, concept('b')],
+      prerequisites: [{ conceptId: 'a', prerequisiteId: 'b', state: 'Proposed' }],
+    });
+    page.select(proposed);
+    details.get('a')!.next({ concept: proposed, passages: [passage('p')] });
+    page.splitNames = 'x, y';
+    fixture.detectChanges();
+
+    const panel = fixture.nativeElement.querySelector('aside') as HTMLElement;
+    const actions = () =>
+      Array.from(
+        panel.querySelectorAll<HTMLButtonElement>('.proposal button, .links button, .row button'),
+      )
+        .concat(Array.from(panel.querySelectorAll<HTMLButtonElement>('.passages button')))
+        .map((button) => [button.textContent?.trim(), button.disabled]);
+
+    expect(actions().filter(([, disabled]) => disabled)).toEqual([]);
+    page.busy.set('Accepting');
+    fixture.detectChanges();
+    expect(actions()).toEqual([
+      ['Keep', true],
+      ['Dismiss', true],
+      ['b', false],
+      ['Keep link', true],
+      ['×', true],
+      ['Suggest prerequisites', true],
+      ['Split', true],
+      ['Find passages in my sources', true],
+      ['Delete concept', true],
+      ['Unlink', true],
+    ]);
+  });
 });
