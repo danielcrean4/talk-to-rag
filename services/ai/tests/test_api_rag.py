@@ -141,6 +141,21 @@ def test_answer_passages_filters_invented_citations(monkeypatch):
     assert data["cited"] == [1]
 
 
+def test_answer_passages_reads_a_list_of_citations(monkeypatch):
+    class StubChat:
+        def complete(self, messages):
+            return "Smaller voxels make a denser mesh [1, 2, 4], and remeshing gives uniform topology [3]."
+
+    monkeypatch.setattr("talk_to_rag.api.routes.rag.chat_model", lambda _: StubChat())
+
+    client = TestClient(create_app())
+    passages = [{"n": n, "content": f"Passage {n}.", "page_number": 1} for n in range(1, 5)]
+    response = client.post("/v1/rag/answer", json={"question": "What are voxels?", "passages": passages})
+
+    assert response.status_code == 200
+    assert response.json()["cited"] == [1, 2, 3, 4]
+
+
 def test_answer_passages_empty_passages():
     client = TestClient(create_app())
     response = client.post(
