@@ -1,0 +1,87 @@
+<a class="back" routerLink="/">← Concepts</a>
+
+@if (concept(); as concept) {
+  <header>
+    <h1>{{ concept.name }}</h1>
+    <p class="mastery-line">
+      <span class="badge mastery" [attr.data-level]="concept.mastery.level">{{
+        concept.mastery.level
+      }}</span>
+      <span class="quiet">{{ masteryText() }}</span>
+    </p>
+  </header>
+}
+
+<p class="status" aria-live="polite">
+  @if (busy()) {
+    {{ busy() }}…
+  }
+</p>
+
+@if (error()) {
+  <p class="error" role="alert">{{ error() }}</p>
+}
+
+@if (loaded() && concept(); as concept) {
+  @if (questions().length === 0) {
+    <div class="card empty-deck">
+      <h2>No flashcards yet</h2>
+      @if (concept.passageCount > 0) {
+        <p>The local model can write some from the passages linked to this concept.</p>
+        <button
+          class="primary"
+          type="button"
+          (click)="generate(concept.id)"
+          [disabled]="busy() !== ''"
+        >
+          Write flashcards
+        </button>
+      } @else {
+        <p>
+          Flashcards are written from the passages linked to a concept. Link one on the
+          <a routerLink="/">concepts screen</a> first.
+        </p>
+      }
+    </div>
+  } @else if (finished()) {
+    <div class="card">
+      <h2>Round done: {{ summary() }}</h2>
+      <div class="row">
+        <button class="primary" type="button" (click)="again()">Go again</button>
+        @if (concept.passageCount > 0) {
+          <button type="button" (click)="generate(concept.id)" [disabled]="busy() !== ''">
+            Write more flashcards
+          </button>
+        }
+        <a routerLink="/">Back to concepts</a>
+      </div>
+    </div>
+  } @else if (card(); as card) {
+    <div class="card">
+      <p class="progress quiet">Card {{ index() + 1 }} of {{ deck().length }}</p>
+      <p class="prompt">{{ card.prompt }}</p>
+      @if (revealed()) {
+        <p class="answer">{{ card.answer }}</p>
+        @if (cardSource(card); as from) {
+          <p class="quiet">
+            From {{ from }}
+            @if (card.sourceId) {
+              · <a [href]="fileUrl(card.sourceId, card)" target="_blank" rel="noopener">Open</a>
+            }
+          </p>
+        }
+        <div class="row marks" role="group" aria-label="How did you do?">
+          @for (mark of marks; track mark.score) {
+            <button type="button" (click)="rate(card, mark.score)" [disabled]="busy() !== ''">
+              {{ mark.label }}
+            </button>
+          }
+        </div>
+      } @else {
+        <div class="row">
+          <button class="primary" type="button" (click)="reveal()">Show answer</button>
+        </div>
+      }
+    </div>
+  }
+}
