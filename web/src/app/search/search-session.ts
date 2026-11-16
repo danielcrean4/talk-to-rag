@@ -1,8 +1,8 @@
 import { HttpEventType } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Subscription } from 'rxjs';
 import { Api, SearchResponse } from '../api';
 import { errorMessage } from '../auth';
+import { latestRequest } from '../latest-request';
 import { SearchScope, SearchSettingsStore, searchRequest } from './search-settings';
 import { SummaryState, readSummary } from './summary-stream';
 
@@ -14,7 +14,8 @@ import { SummaryState, readSummary } from './summary-stream';
 export class SearchSession {
   private readonly api = inject(Api);
   private readonly settings = inject(SearchSettingsStore);
-  private summaryRun?: Subscription;
+  private readonly searchRun = latestRequest();
+  private readonly summaryRun = latestRequest();
 
   readonly results = signal<SearchResponse | null>(null);
   readonly conversationId = signal<string | null>(null);
@@ -37,7 +38,7 @@ export class SearchSession {
       ...scope,
       conversationId: this.conversationId(),
     });
-    this.api.search(request).subscribe({
+    this.searchRun.run(this.api.search(request), {
       next: (response) => {
         this.searching.set(false);
         this.results.set(response);
@@ -62,7 +63,7 @@ export class SearchSession {
     this.stopSummary();
     this.summary.set(readSummary(''));
     this.summarizing.set(true);
-    this.summaryRun = this.api.summaryStream(conversationId).subscribe({
+    this.summaryRun.run(this.api.summaryStream(conversationId), {
       next: (event) => {
         if (event.type === HttpEventType.DownloadProgress && event.partialText !== undefined) {
           this.summary.set(readSummary(event.partialText));
@@ -86,6 +87,8 @@ export class SearchSession {
   }
 
   startOver(): void {
+    this.searchRun.cancel();
+    this.searching.set(false);
     this.stopSummary();
     this.results.set(null);
     this.summary.set(null);
@@ -94,7 +97,7 @@ export class SearchSession {
   }
 
   private stopSummary(): void {
-    this.summaryRun?.unsubscribe();
+    this.summaryRun.cancel();
     this.summarizing.set(false);
   }
 }

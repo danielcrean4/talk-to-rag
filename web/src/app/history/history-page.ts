@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { Api, ConversationDetails, ConversationSummary, Source } from '../api';
 import { AnswerText } from '../answer-text';
 import { Auth, errorMessage } from '../auth';
+import { latestRequest } from '../latest-request';
 import { sourceFileUrl } from '../passages';
 import { CitationGroup, CitationView, conversationTurns } from './conversation-turns';
 
@@ -17,6 +18,7 @@ import { CitationGroup, CitationView, conversationTurns } from './conversation-t
 export class HistoryPage {
   private readonly api = inject(Api);
   private readonly auth = inject(Auth);
+  private readonly conversationRun = latestRequest();
 
   /** Bound from the `history/:id` route. */
   readonly id = input<string>();
@@ -89,18 +91,18 @@ export class HistoryPage {
   }
 
   private open(id: string | undefined): void {
+    this.conversationRun.cancel();
     this.conversation.set(null);
     this.expanded.set(new Set());
+    this.loading.set(false);
     if (!id) {
       return;
     }
     this.loading.set(true);
     this.error.set('');
-    this.api.conversation(id).subscribe({
+    this.conversationRun.run(this.api.conversation(id), {
       next: (conversation) => {
-        if (this.id() === id) {
-          this.conversation.set(conversation);
-        }
+        this.conversation.set(conversation);
         this.loading.set(false);
       },
       error: (error) => {

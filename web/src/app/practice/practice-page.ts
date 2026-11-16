@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { Api, Concept, Question } from '../api';
 import { errorMessage } from '../auth';
+import { latestRequest } from '../latest-request';
 import { Flashcard } from './flashcard';
 import {
   FLASHCARDS_PLATFORM,
@@ -23,6 +24,7 @@ import {
 })
 export class PracticePage {
   private readonly api = inject(Api);
+  private readonly loadRun = latestRequest();
 
   /** Bound from the `concepts/:id/practice` route. */
   readonly id = input.required<string>();
@@ -107,7 +109,7 @@ export class PracticePage {
     this.loaded.set(false);
     this.busy.set('Loading');
     this.error.set('');
-    forkJoin([this.api.details(conceptId), this.api.questions(conceptId)]).subscribe({
+    this.loadRun.run(forkJoin([this.api.details(conceptId), this.api.questions(conceptId)]), {
       next: ([details, questions]) => {
         this.busy.set('');
         this.concept.set(details.concept);

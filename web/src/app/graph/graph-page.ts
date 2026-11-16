@@ -14,6 +14,7 @@ import {
 } from '../api';
 import { Auth, errorMessage } from '../auth';
 import { isPagedCitation } from '../history/conversation-turns';
+import { latestRequest } from '../latest-request';
 import { sourceFileUrl } from '../passages';
 import { dueSummary, masteryDetail } from '../practice/practice-deck';
 import { NODE_HEIGHT, NODE_WIDTH, layoutGraph } from './graph-layout';
@@ -27,6 +28,7 @@ import { NODE_HEIGHT, NODE_WIDTH, layoutGraph } from './graph-layout';
 export class GraphPage {
   private readonly api = inject(Api);
   private readonly auth = inject(Auth);
+  private readonly detailsRun = latestRequest();
 
   readonly nodeWidth = NODE_WIDTH;
   readonly nodeHeight = NODE_HEIGHT;
@@ -101,7 +103,7 @@ export class GraphPage {
     this.suggestions.set(null);
     this.splitNames = '';
     this.prerequisiteToAdd = '';
-    this.api.details(concept.id).subscribe({
+    this.detailsRun.run(this.api.details(concept.id), {
       next: (details) => this.passages.set(details.passages),
       error: (error) => this.error.set(errorMessage(error)),
     });
