@@ -1,6 +1,6 @@
 # Roadmap
 
-The work is split into two milestones on GitHub, and every feature and bug is an issue on one of them. Ideas that are not designed yet are listed under Later.
+The work is split into milestones on GitHub. Every feature and bug is an issue on one of them, except the quality backlog, which is labelled instead. Ideas that are not designed yet are listed under Later.
 
 ## 1.0
 
@@ -29,11 +29,24 @@ Most of this is already in `1.0.0`: the concept graph, questions and attempts wi
 - [What was built](https://github.com/danielcrean4/talk-to-rag/issues?q=milestone%3A1.1+is%3Aclosed)
 - [What is left](https://github.com/danielcrean4/talk-to-rag/issues?q=milestone%3A1.1+is%3Aopen)
 
+`1.1.0` is tagged. Bugs found in it are filed on the 1.1 milestone and released as `1.1.x`.
+
+## 1.2
+
+Phone-ready: the app usable from a phone on a private network. That needs the default secrets removed, sign-in hardened for accounts mode, short-lived file links instead of the sign-in token in the URL, and the web screens and concept graph laid out for small screens. The design is in [#51](https://github.com/danielcrean4/talk-to-rag/issues/51).
+
+- [What was built](https://github.com/danielcrean4/talk-to-rag/issues?q=milestone%3A1.2+is%3Aclosed)
+- [What is left](https://github.com/danielcrean4/talk-to-rag/issues?q=milestone%3A1.2+is%3Aopen)
+
+## Quality backlog
+
+Issues labelled `quality` came from a code review on 2026-11-16. They are on no milestone; one or two are picked up in each release.
+
+- [Open](https://github.com/danielcrean4/talk-to-rag/issues?q=label%3Aquality+is%3Aopen)
+
 ## Later
 
-Ideas that are on neither milestone because they have not been designed yet.
-
-- A mobile version of the app ([#51](https://github.com/danielcrean4/talk-to-rag/issues/51)).
+Ideas that are on no milestone because they have not been designed yet. None at the moment.
 
 ## How issues are written
 
