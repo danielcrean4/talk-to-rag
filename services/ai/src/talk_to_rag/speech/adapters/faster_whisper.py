@@ -1,7 +1,7 @@
 import io
 import os
 
-from talk_to_rag.speech.contracts import SpeechNotConfigured
+from talk_to_rag.speech.contracts import SpeechNotConfigured, UnreadableAudio
 
 MODEL_ENV = "TALK_TO_RAG_WHISPER_MODEL"
 CACHE_ENV = "TALK_TO_RAG_MODEL_CACHE"
@@ -24,5 +24,10 @@ class FasterWhisperSpeechToText:
         )
 
     def transcribe(self, audio: bytes) -> str:
-        segments, _info = self._model.transcribe(io.BytesIO(audio), vad_filter=True)
-        return " ".join(segment.text.strip() for segment in segments).strip()
+        import av
+
+        try:
+            segments, _info = self._model.transcribe(io.BytesIO(audio), vad_filter=True)
+            return " ".join(segment.text.strip() for segment in segments).strip()
+        except av.error.FFmpegError as error:
+            raise UnreadableAudio(f"The audio could not be read: {error}") from error

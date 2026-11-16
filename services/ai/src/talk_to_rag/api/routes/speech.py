@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from talk_to_rag.speech import SpeechNotConfigured, UnknownVoice, get_stt, get_tts
+from talk_to_rag.speech import SpeechNotConfigured, UnknownVoice, UnreadableAudio, get_stt, get_tts
 from talk_to_rag.speech.text import spoken_text
 from talk_to_rag.storage import StorageError, blob_storage
 
@@ -34,6 +34,8 @@ def transcribe(request: TranscribeRequest) -> TranscribeResponse:
         return TranscribeResponse(text=get_stt().transcribe(audio))
     except SpeechNotConfigured as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
+    except UnreadableAudio as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
 
 
 class SynthesizeRequest(BaseModel):

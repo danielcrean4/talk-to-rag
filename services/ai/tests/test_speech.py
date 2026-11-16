@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from talk_to_rag.api.app import create_app
-from talk_to_rag.speech import SpeechNotConfigured, get_stt, get_tts, set_stt, set_tts
+from talk_to_rag.speech import SpeechNotConfigured, UnreadableAudio, get_stt, get_tts, set_stt, set_tts
 from talk_to_rag.speech.adapters.fake import FakeSpeechToText, FakeTextToSpeech
 from talk_to_rag.speech.adapters.kokoro import read_unknown, token_chunks
 from talk_to_rag.speech.text import split_sentences, spoken_text
@@ -59,6 +59,20 @@ def test_transcribe_returns_400_for_empty_audio():
     response = TestClient(create_app()).post("/v1/speech/transcribe", json={"blob_key": "speech/empty.webm"})
 
     assert response.status_code == 400
+
+
+def test_transcribe_returns_400_for_audio_that_cannot_be_decoded():
+    class UnreadableStt:
+        def transcribe(self, audio: bytes) -> str:
+            raise UnreadableAudio("The audio could not be read: Invalid data found when processing input")
+
+    set_stt(UnreadableStt())
+    blob_storage().write_bytes("speech/cut-off.webm", b"not-audio")
+
+    response = TestClient(create_app()).post("/v1/speech/transcribe", json={"blob_key": "speech/cut-off.webm"})
+
+    assert response.status_code == 400
+    assert "could not be read" in response.json()["detail"]
 
 
 def test_transcribe_returns_503_when_speech_is_not_configured():
