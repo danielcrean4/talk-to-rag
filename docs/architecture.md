@@ -126,6 +126,7 @@ The SQL in `SearchRepository`:
 - `ConceptPassage` points at a source, page and section, not at a chunk id, because chunks get new ids when a source is ingested again.
 - `POST /api/concepts/{id}/questions/generate` has `local-3b` write flashcards (`POST /v1/concepts/generate-questions`) from the text of the concept's passages.
 - Every answer is an `Attempt` with a score from 0 to 1 (`POST /api/attempts`). Mastery is computed from attempts when read (`MasteryDto.From`): New with no attempts, Solid after at least 3 attempts with an average of 0.8 or more over the last 5, Learning otherwise.
+- The web app shows each concept's mastery level on its tile in the graph. The practice screen (`/concepts/{id}/practice`) steps through the concept's flashcards, cards never answered first and then the ones last answered worst. Once the answer is shown, the user marks it Missed, Almost or Got it, which posts an attempt with platform `flashcards` and score 0, 0.5 or 1, and the mastery shown is the one that response returns. A concept with no flashcards offers to generate them when it has linked passages.
 
 ## Audit log
 
@@ -161,7 +162,7 @@ services/
     src/TalkToRag.Api/             controllers, Program.cs (serves the Angular build from wwwroot/ in the image)
     tests/TalkToRag.UnitTests, tests/TalkToRag.IntegrationTests (Testcontainers pgvector)
   mcp/                          read-only MCP server over the audit schema
-web/                            Angular 22: sign-in, sources, search, history, concept graph
+web/                            Angular 22: sign-in, sources, search, history, concept graph, practice
 ```
 
 ## Endpoints

@@ -3,6 +3,7 @@ import { signedInGuard } from './auth';
 import { GraphPage } from './graph/graph-page';
 import { HistoryPage } from './history/history-page';
 import { Login } from './login';
+import { PracticePage } from './practice/practice-page';
 import { SearchPage } from './search/search-page';
 import { SourcesPage } from './sources/sources-page';
 
@@ -13,5 +14,6 @@ export const routes: Routes = [
   { path: 'search', component: SearchPage, canActivate: [signedInGuard] },
   { path: 'history', component: HistoryPage, canActivate: [signedInGuard] },
   { path: 'history/:id', component: HistoryPage, canActivate: [signedInGuard] },
+  { path: 'concepts/:id/practice', component: PracticePage, canActivate: [signedInGuard] },
   { path: '**', redirectTo: '' },
 ];

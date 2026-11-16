@@ -4,6 +4,17 @@ import { Observable } from 'rxjs';
 
 export type ProposalState = 'Proposed' | 'Accepted';
 
+export type MasteryLevel = 'New' | 'Learning' | 'Solid';
+
+/** Worked out by the API from the concept's attempts; never stored. */
+export interface Mastery {
+  level: MasteryLevel;
+  attempts: number;
+  /** Average score of the last few attempts, from 0 to 1. */
+  recentScore: number | null;
+  lastPractisedAtUtc: string | null;
+}
+
 export interface Concept {
   id: string;
   name: string;
@@ -11,6 +22,27 @@ export interface Concept {
   state: ProposalState;
   proposedByModel: boolean;
   passageCount: number;
+  mastery: Mastery;
+}
+
+export interface Question {
+  id: string;
+  conceptId: string;
+  prompt: string;
+  answer: string;
+  generatedByModel: boolean;
+  sourceId: string | null;
+  sourceTitle: string | null;
+  pageNumber: number | null;
+  pageLabel: string | null;
+  section: string | null;
+  attempts: number;
+  lastScore: number | null;
+}
+
+export interface AttemptResult {
+  conceptId: string;
+  mastery: Mastery;
 }
 
 /** "Understand prerequisiteId before conceptId." */
@@ -361,5 +393,19 @@ export class Api {
 
   removePassage(id: string, passageId: string): Observable<void> {
     return this.http.delete<void>(`/api/concepts/${id}/passages/${passageId}`);
+  }
+
+  questions(conceptId: string): Observable<Question[]> {
+    return this.http.get<Question[]>(`/api/concepts/${conceptId}/questions`);
+  }
+
+  /** The local model writes flashcards from the concept's linked passages; 400 when it has none. */
+  generateQuestions(conceptId: string): Observable<Question[]> {
+    return this.http.post<Question[]>(`/api/concepts/${conceptId}/questions/generate`, {});
+  }
+
+  /** Records an answer with a score from 0 to 1 and returns the concept's updated mastery. */
+  recordAttempt(questionId: string, platform: string, score: number): Observable<AttemptResult> {
+    return this.http.post<AttemptResult>('/api/attempts', { questionId, platform, score });
   }
 }

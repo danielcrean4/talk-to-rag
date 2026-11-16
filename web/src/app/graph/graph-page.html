@@ -57,8 +57,15 @@
             <span class="name">{{ node.concept.name }}</span>
             @if (node.concept.state === 'Proposed') {
               <span class="meta">suggested</span>
-            } @else if (node.concept.passageCount) {
-              <span class="meta">{{ node.concept.passageCount }} linked</span>
+            } @else {
+              <span class="meta">
+                <span class="mastery" [attr.data-level]="node.concept.mastery.level">{{
+                  node.concept.mastery.level
+                }}</span>
+                @if (node.concept.passageCount) {
+                  · {{ node.concept.passageCount }} linked
+                }
+              </span>
             }
           </button>
         }
@@ -92,6 +99,17 @@
           <button type="button" (click)="dismiss(concept)">Dismiss</button>
         </div>
       }
+
+      <h3>Practice</h3>
+      <div class="row practice">
+        <span class="badge mastery" [attr.data-level]="concept.mastery.level">{{
+          concept.mastery.level
+        }}</span>
+        <span class="quiet">{{ masteryDetail(concept.mastery) }}</span>
+      </div>
+      <div class="row">
+        <a class="button" [routerLink]="['/concepts', concept.id, 'practice']">Flashcards</a>
+      </div>
 
       <h3>Builds on</h3>
       @if (selectedPrerequisites().length === 0) {

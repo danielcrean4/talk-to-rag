@@ -1,15 +1,17 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { Observable } from 'rxjs';
 import { Api, Concept, ConceptGraph, ConceptPassage, PassageSuggestion, Place } from '../api';
 import { Auth, errorMessage } from '../auth';
 import { isPagedCitation } from '../history/conversation-turns';
 import { sourceFileUrl } from '../passages';
+import { masteryDetail } from '../practice/practice-deck';
 import { NODE_HEIGHT, NODE_WIDTH, layoutGraph } from './graph-layout';
 
 @Component({
   selector: 'app-graph-page',
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink],
   templateUrl: './graph-page.html',
   styleUrl: './graph-page.css',
 })
@@ -19,6 +21,7 @@ export class GraphPage {
 
   readonly nodeWidth = NODE_WIDTH;
   readonly nodeHeight = NODE_HEIGHT;
+  readonly masteryDetail = masteryDetail;
 
   readonly graph = signal<ConceptGraph>({ concepts: [], prerequisites: [] });
   readonly loaded = signal(false);

@@ -123,6 +123,14 @@ a {
   color: var(--muted);
   white-space: nowrap;
 }
+.mastery[data-level='Learning'] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.mastery[data-level='Solid'] {
+  border-color: var(--ok);
+  color: var(--ok);
+}
 .passage {
   border: 1px solid var(--line);
   border-radius: 8px;

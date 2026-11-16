@@ -8,6 +8,7 @@ const concept = (id: string): Concept => ({
   state: 'Accepted',
   proposedByModel: false,
   passageCount: 0,
+  mastery: { level: 'New', attempts: 0, recentScore: null, lastPractisedAtUtc: null },
 });
 const needs = (conceptId: string, prerequisiteId: string): Prerequisite => ({
   conceptId,

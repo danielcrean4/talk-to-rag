@@ -168,6 +168,21 @@
   flex: 1;
   min-width: 0;
 }
+.practice {
+  align-items: center;
+}
+a.button {
+  display: inline-block;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: var(--text);
+  text-decoration: none;
+}
+a.button:hover {
+  border-color: var(--accent);
+}
 .proposal {
   display: flex;
   align-items: center;
