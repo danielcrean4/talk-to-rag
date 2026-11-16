@@ -89,12 +89,7 @@ public sealed class SourceIngestionWorker(
 
             if (string.IsNullOrWhiteSpace(response.EmbeddingModel))
             {
-                if (await MarkFailedAsync(repo, source.Id, "The AI service did not say which embedding model it used. Update the AI service and retry."))
-                {
-                    logger.LogWarning("Source {SourceId} failed: the ingest response named no embedding model", source.Id);
-                }
-
-                return;
+                throw new AiIngestionException("The AI service did not say which embedding model it used. Update the AI service and retry.");
             }
 
             var chunks = response.Chunks.Select(chunk => new SourceChunk

@@ -155,38 +155,39 @@ public sealed class SourceService(
         await blobStorage.DeleteAsync(source.BlobKey, cancellationToken);
     }
 
-    private static string? CleanLicense(string? license)
+    private static string? CleanLicense(string? license) => Trimmed(license, Source.MaxLicenseLength, "License");
+
+    private static string? CleanSourceUrl(string? sourceUrl)
     {
-        var trimmed = license?.Trim();
-        if (string.IsNullOrEmpty(trimmed))
+        var trimmed = Trimmed(sourceUrl, Source.MaxSourceUrlLength, "Source URL");
+        if (trimmed is null)
         {
             return null;
         }
 
-        if (trimmed.Length > Source.MaxLicenseLength)
+        var isWebUrl = Uri.TryCreate(trimmed, UriKind.Absolute, out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+            && uri.Host.Length > 0;
+        if (!isWebUrl)
         {
-            throw new RequestValidationException($"License cannot be longer than {Source.MaxLicenseLength} characters.");
+            throw new RequestValidationException("Source URL must be an absolute http or https URL.");
         }
 
         return trimmed;
     }
 
-    private static string? CleanSourceUrl(string? sourceUrl)
+    /// <summary>The value trimmed, or null when it is blank.</summary>
+    private static string? Trimmed(string? value, int maxLength, string field)
     {
-        var trimmed = sourceUrl?.Trim();
+        var trimmed = value?.Trim();
         if (string.IsNullOrEmpty(trimmed))
         {
             return null;
         }
 
-        if (trimmed.Length > Source.MaxSourceUrlLength)
+        if (trimmed.Length > maxLength)
         {
-            throw new RequestValidationException($"Source URL cannot be longer than {Source.MaxSourceUrlLength} characters.");
-        }
-
-        if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) || uri.Host.Length == 0)
-        {
-            throw new RequestValidationException("Source URL must be an absolute http or https URL.");
+            throw new RequestValidationException($"{field} cannot be longer than {maxLength} characters.");
         }
 
         return trimmed;
