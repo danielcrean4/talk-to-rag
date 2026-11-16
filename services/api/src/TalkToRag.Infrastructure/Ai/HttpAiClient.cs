@@ -59,8 +59,16 @@ public sealed class HttpAiClient(HttpClient httpClient) : IAiClient
         }
     }
 
-    public Task<TranscribeResponse> TranscribeAsync(TranscribeRequest request, CancellationToken cancellationToken = default) =>
-        PostAsync<TranscribeRequest, TranscribeResponse>("/v1/speech/transcribe", request, "Speech-to-text is unavailable.", cancellationToken);
+    public async Task<TranscribeResponse> TranscribeAsync(TranscribeRequest request, CancellationToken cancellationToken = default)
+    {
+        using var response = await httpClient.PostAsJsonAsync("/v1/speech/transcribe", request, JsonOptions, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.BadRequest)
+        {
+            throw new RequestValidationException(await ErrorMessageAsync(response, cancellationToken) ?? "The audio could not be read.");
+        }
+
+        return await ReadAsync<TranscribeResponse>(response, "Speech-to-text is unavailable.", cancellationToken);
+    }
 
     public async Task<SynthesizeResponse> SynthesizeAsync(SynthesizeRequest request, CancellationToken cancellationToken = default)
     {

@@ -47,6 +47,18 @@ public class HttpAiClientSpeechTests
         Assert.Equal("There is no text to speak.", error.Message);
     }
 
+    [Fact]
+    public async Task TranscribeAsync_ThrowsRequestValidation_On400()
+    {
+        var handler = new RecordingHandler(HttpStatusCode.BadRequest, """{"detail": "The audio could not be read: Invalid data found when processing input"}""");
+
+        var error = await Assert.ThrowsAsync<RequestValidationException>(
+            () => CreateClient(handler).TranscribeAsync(new TranscribeRequest("audio/u/a.webm")));
+
+        Assert.Equal("/v1/speech/transcribe", handler.Path);
+        Assert.StartsWith("The audio could not be read", error.Message);
+    }
+
     private static HttpAiClient CreateClient(HttpMessageHandler handler) =>
         new(new HttpClient(handler) { BaseAddress = new Uri("http://localhost:8000") });
 

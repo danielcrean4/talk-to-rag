@@ -13,6 +13,7 @@ from talk_to_rag.speech.contracts import (
     SynthesizedSpeech,
     TextToSpeech,
     UnknownVoice,
+    UnreadableAudio,
 )
 
 STT_ENV = "TALK_TO_RAG_STT"
@@ -76,6 +77,7 @@ __all__ = [
     "SynthesizedSpeech",
     "TextToSpeech",
     "UnknownVoice",
+    "UnreadableAudio",
     "get_stt",
     "get_tts",
     "set_stt",
