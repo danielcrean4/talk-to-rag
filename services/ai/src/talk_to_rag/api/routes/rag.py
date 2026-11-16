@@ -91,10 +91,14 @@ def summary_messages(request: AnswerRequest) -> list[Message]:
     return [Message(role="system", content=SUMMARY_INSTRUCTIONS), Message(role="user", content=prompt)]
 
 
+# [3] or a list such as [1, 2, 4]; the web app reads the same forms.
+CITATION = re.compile(r"\[(\d+(?:\s*,\s*\d+)*)\]")
+
+
 def cited_passages(answer: str, request: AnswerRequest) -> list[int]:
     """The passage numbers the answer cites, without any number that matches no passage."""
     given = {passage.n for passage in request.passages}
-    cited = {int(number) for number in re.findall(r"\[(\d+)\]", answer)}
+    cited = {int(number) for group in CITATION.findall(answer) for number in group.split(",")}
     if cited - given:
         logger.warning("The model cited passages that were not given: %s", sorted(cited - given))
     return sorted(cited & given)
