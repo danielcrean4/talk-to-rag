@@ -8,6 +8,10 @@ class SpeechNotConfigured(RuntimeError):
     """No speech adapter is selected, or its optional dependencies are missing."""
 
 
+class UnreadableAudio(ValueError):
+    """The recording could not be decoded, for example because it is cut off or not audio."""
+
+
 class UnknownVoice(ValueError):
     """The text-to-speech adapter has no voice by that name."""
 
