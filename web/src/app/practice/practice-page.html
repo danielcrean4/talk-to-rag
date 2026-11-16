@@ -8,6 +8,9 @@
         concept.mastery.level
       }}</span>
       <span class="quiet">{{ masteryText() }}</span>
+      @if (questions().length) {
+        <span class="quiet">· {{ dueText() }}</span>
+      }
     </p>
   </header>
 }
@@ -57,31 +60,11 @@
       </div>
     </div>
   } @else if (card(); as card) {
-    <div class="card">
-      <p class="progress quiet">Card {{ index() + 1 }} of {{ deck().length }}</p>
-      <p class="prompt">{{ card.prompt }}</p>
-      @if (revealed()) {
-        <p class="answer">{{ card.answer }}</p>
-        @if (cardSource(card); as from) {
-          <p class="quiet">
-            From {{ from }}
-            @if (card.sourceId) {
-              · <a [href]="fileUrl(card.sourceId, card)" target="_blank" rel="noopener">Open</a>
-            }
-          </p>
-        }
-        <div class="row marks" role="group" aria-label="How did you do?">
-          @for (mark of marks; track mark.score) {
-            <button type="button" (click)="rate(card, mark.score)" [disabled]="busy() !== ''">
-              {{ mark.label }}
-            </button>
-          }
-        </div>
-      } @else {
-        <div class="row">
-          <button class="primary" type="button" (click)="reveal()">Show answer</button>
-        </div>
-      }
-    </div>
+    <app-flashcard
+      [card]="card"
+      [progress]="'Card ' + (index() + 1) + ' of ' + deck().length"
+      [busy]="busy() !== ''"
+      (rated)="rate(card, $event)"
+    />
   }
 }

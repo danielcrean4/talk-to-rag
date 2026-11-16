@@ -17,21 +17,38 @@ export const MARKS: readonly Mark[] = [
   { label: 'Got it', score: 1 },
 ];
 
+/** True when the card has been answered and its schedule says to ask it again by `now`. */
+export function isDue(question: Question, now: Date): boolean {
+  return question.dueAtUtc !== null && Date.parse(question.dueAtUtc) <= now.getTime();
+}
+
 /**
- * The order to practise in: cards never answered first, then the ones last answered worst.
- * Cards that tie keep the order the API gave them.
+ * The order to practise in: due cards first, the longest overdue leading, then cards never
+ * answered, then the rest by when they fall due. Cards that tie keep the order the API gave them.
  */
-export function practiceOrder(questions: readonly Question[]): Question[] {
-  const rank = (question: Question) => question.lastScore ?? -1;
+export function practiceOrder(questions: readonly Question[], now: Date): Question[] {
+  const group = (question: Question) => (isDue(question, now) ? 0 : question.dueAtUtc ? 2 : 1);
+  const due = (question: Question) => (question.dueAtUtc ? Date.parse(question.dueAtUtc) : 0);
   return questions
     .map((question, index) => ({ question, index }))
-    .sort((a, b) => rank(a.question) - rank(b.question) || a.index - b.index)
+    .sort(
+      (a, b) =>
+        group(a.question) - group(b.question) ||
+        due(a.question) - due(b.question) ||
+        a.index - b.index,
+    )
     .map((item) => item.question);
 }
 
 /** The card after an answer with this score, as the API will report it next time. */
-export function answered(question: Question, score: number): Question {
-  return { ...question, attempts: question.attempts + 1, lastScore: score };
+export function answered(question: Question, score: number, dueAtUtc: string | null): Question {
+  return { ...question, attempts: question.attempts + 1, lastScore: score, dueAtUtc };
+}
+
+/** Such as "3 due, 2 new", or "Nothing due" when there is neither. */
+export function dueSummary(due: number, fresh: number): string {
+  const parts = [due ? `${due} due` : '', fresh ? `${fresh} new` : ''].filter(Boolean);
+  return parts.length ? parts.join(', ') : 'Nothing due';
 }
 
 /** Where a card came from, such as "Euclid · Book I · p. 4", or null for a card with no source. */

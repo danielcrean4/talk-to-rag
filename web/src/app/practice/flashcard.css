@@ -1,0 +1,32 @@
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.card p {
+  margin: 0;
+}
+.prompt {
+  font-size: 1.125rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.answer {
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.marks button {
+  flex: 1 1 6rem;
+}

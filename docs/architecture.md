@@ -126,7 +126,9 @@ The SQL in `SearchRepository`:
 - `ConceptPassage` points at a source, page and section, not at a chunk id, because chunks get new ids when a source is ingested again.
 - `POST /api/concepts/{id}/questions/generate` has `local-3b` write flashcards (`POST /v1/concepts/generate-questions`) from the text of the concept's passages.
 - Every answer is an `Attempt` with a score from 0 to 1 (`POST /api/attempts`). Mastery is computed from attempts when read (`MasteryDto.From`): New with no attempts, Solid after at least 3 attempts with an average of 0.8 or more over the last 5, Learning otherwise.
-- The web app shows each concept's mastery level on its tile in the graph. The practice screen (`/concepts/{id}/practice`) steps through the concept's flashcards, cards never answered first and then the ones last answered worst. Once the answer is shown, the user marks it Missed, Almost or Got it, which posts an attempt with platform `flashcards` and score 0, 0.5 or 1, and the mastery shown is the one that response returns. A concept with no flashcards offers to generate them when it has linked passages.
+- When a question is due again is also computed when read, never stored. `Fsrs` (in `Application/Practice`) is FSRS-5 with its published default parameters and a target retention of 0.9, ported from py-fsrs 5.1.3 without learning steps or fuzzing, so every answer schedules the card at least one whole day ahead. The question's attempts are replayed in time order, each score turned into a rating: below 0.25 is Again, below 0.75 is Hard, the rest is Good; Easy is never used. Only attempts that name the question count, so a game's concept-only attempts change mastery but not the schedule. A question's `dueAtUtc` is null until it is first answered, and `POST /api/attempts` returns the answered question's new `dueAtUtc`.
+- `GET /api/practice/due` lists, across the user's concepts that are not rejected, every question due at or before now (from `TimeProvider`), earliest first, then at most 10 never answered, oldest first. It also gives `dueCount`, `newCount` and the two counts per concept, which cover every question, including new ones past the 10.
+- The web app shows each concept's mastery level and the number of cards due on its tile in the graph, and the concept panel gives the due and new counts. The review screen (`/review`, in the nav, and linked from the graph's toolbar when anything is due) steps through what `GET /api/practice/due` returns and asks it again after a round. The practice screen (`/concepts/{id}/practice`) steps through one concept's flashcards: due cards first, the longest overdue leading, then cards never answered, then the rest by due time. Both screens show cards with the same `Flashcard` component: once the answer is shown, the user marks it Missed, Almost or Got it, which posts an attempt with platform `flashcards` and score 0, 0.5 or 1 (Again, Hard and Good). A concept with no flashcards offers to generate them when it has linked passages.
 
 ## Audit log
 
@@ -162,7 +164,7 @@ services/
     src/TalkToRag.Api/             controllers, Program.cs (serves the Angular build from wwwroot/ in the image)
     tests/TalkToRag.UnitTests, tests/TalkToRag.IntegrationTests (Testcontainers pgvector)
   mcp/                          read-only MCP server over the audit schema
-web/                            Angular 22: sign-in, sources, search, history, concept graph, practice
+web/                            Angular 22: sign-in, sources, search, history, concept graph, practice, review
 ```
 
 ## Endpoints
@@ -180,7 +182,7 @@ API (`services/api`, all under `/api`; all but `health`, `auth/register`, `auth/
 | History | `GET conversations`, `GET conversations/{id}` |
 | Speech | `POST speech/transcribe`, `POST speech/synthesize` |
 | Concepts | `GET concepts/graph`, `POST concepts`, `GET`, `PATCH`, `DELETE concepts/{id}`, `POST concepts/{id}/accept`, `.../reject`, `.../split`, `.../propose-prerequisites`, `PUT`, `DELETE concepts/{id}/prerequisites/{prerequisiteId}`, `GET concepts/{id}/passage-suggestions`, `POST concepts/{id}/passages`, `DELETE concepts/{id}/passages/{passageId}` |
-| Practice | `GET`, `POST concepts/{id}/questions`, `POST concepts/{id}/questions/generate`, `DELETE questions/{id}`, `POST attempts` |
+| Practice | `GET`, `POST concepts/{id}/questions`, `POST concepts/{id}/questions/generate`, `DELETE questions/{id}`, `GET practice/due`, `POST attempts` |
 
 AI service (`services/ai`): `GET /health`, `POST /v1/sources/ingest`, `POST /v1/rag/expand-query`, `POST /v1/rag/answer`, `POST /v1/rag/answer/stream`, `POST /v1/speech/transcribe`, `POST /v1/speech/synthesize`, `POST /v1/concepts/propose-prerequisites`, `POST /v1/concepts/generate-questions`.
 

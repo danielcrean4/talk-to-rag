@@ -2,11 +2,20 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Observable } from 'rxjs';
-import { Api, Concept, ConceptGraph, ConceptPassage, PassageSuggestion, Place } from '../api';
+import {
+  Api,
+  Concept,
+  ConceptGraph,
+  ConceptPassage,
+  DueCards,
+  DueConcept,
+  PassageSuggestion,
+  Place,
+} from '../api';
 import { Auth, errorMessage } from '../auth';
 import { isPagedCitation } from '../history/conversation-turns';
 import { sourceFileUrl } from '../passages';
-import { masteryDetail } from '../practice/practice-deck';
+import { dueSummary, masteryDetail } from '../practice/practice-deck';
 import { NODE_HEIGHT, NODE_WIDTH, layoutGraph } from './graph-layout';
 
 @Component({
@@ -22,6 +31,7 @@ export class GraphPage {
   readonly nodeWidth = NODE_WIDTH;
   readonly nodeHeight = NODE_HEIGHT;
   readonly masteryDetail = masteryDetail;
+  readonly dueSummary = dueSummary;
 
   readonly graph = signal<ConceptGraph>({ concepts: [], prerequisites: [] });
   readonly loaded = signal(false);
@@ -30,6 +40,7 @@ export class GraphPage {
   readonly selectedId = signal<string | null>(null);
   readonly passages = signal<ConceptPassage[]>([]);
   readonly suggestions = signal<PassageSuggestion[] | null>(null);
+  readonly due = signal<DueCards | null>(null);
 
   newName = '';
   splitNames = '';
@@ -39,6 +50,13 @@ export class GraphPage {
   readonly selected = computed(
     () => this.graph().concepts.find((concept) => concept.id === this.selectedId()) ?? null,
   );
+  private readonly dueByConcept = computed(
+    () => new Map(this.due()?.concepts.map((item) => [item.conceptId, item]) ?? []),
+  );
+  readonly reviewText = computed(() => {
+    const due = this.due();
+    return due && due.dueCount + due.newCount > 0 ? dueSummary(due.dueCount, due.newCount) : '';
+  });
   readonly proposedCount = computed(
     () => this.graph().concepts.filter((concept) => concept.state === 'Proposed').length,
   );
@@ -66,6 +84,15 @@ export class GraphPage {
       this.graph.set(graph);
       this.loaded.set(true);
     });
+    this.api.due().subscribe({
+      next: (due) => this.due.set(due),
+      error: (error) => this.error.set(errorMessage(error)),
+    });
+  }
+
+  /** How many of the concept's flashcards are due now and how many are new. */
+  dueFor(conceptId: string): DueConcept {
+    return this.dueByConcept().get(conceptId) ?? { conceptId, conceptName: '', due: 0, new: 0 };
   }
 
   select(concept: Concept): void {

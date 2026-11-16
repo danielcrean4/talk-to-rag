@@ -1,0 +1,46 @@
+<header>
+  <h1>Review</h1>
+  @if (due()) {
+    <p class="mastery-line quiet">{{ dueText() }}</p>
+  }
+</header>
+
+<p class="status" aria-live="polite">
+  @if (busy()) {
+    {{ busy() }}…
+  }
+</p>
+
+@if (error()) {
+  <p class="error" role="alert">{{ error() }}</p>
+}
+
+@if (due()) {
+  @if (deck().length === 0) {
+    <div class="card empty-deck">
+      <h2>Nothing to review now</h2>
+      <p>
+        Cards come back here when they are due. Write flashcards for a concept on the
+        <a routerLink="/">concepts screen</a>.
+      </p>
+    </div>
+  } @else if (finished()) {
+    <div class="card">
+      <h2>Round done: {{ summary() }}</h2>
+      <div class="row">
+        <button class="primary" type="button" (click)="load()" [disabled]="busy() !== ''">
+          Check for more
+        </button>
+        <a routerLink="/">Back to concepts</a>
+      </div>
+    </div>
+  } @else if (card(); as card) {
+    <app-flashcard
+      [card]="card"
+      [progress]="'Card ' + (index() + 1) + ' of ' + deck().length"
+      [concept]="conceptName(card)"
+      [busy]="busy() !== ''"
+      (rated)="rate(card, $event)"
+    />
+  }
+}
