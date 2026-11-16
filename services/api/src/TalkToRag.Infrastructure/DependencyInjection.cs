@@ -35,11 +35,14 @@ public static class DependencyInjection
 
         services.AddSingleton<ISourceIngestionQueue, ChannelSourceIngestionQueue>();
 
-        var aiBaseUrl = configuration["AiService:BaseUrl"] ?? "http://localhost:8000";
+        var aiSection = configuration.GetSection(AiServiceOptions.Section);
+        var aiOptions = aiSection.Get<AiServiceOptions>() ?? new AiServiceOptions();
+        services.Configure<AiServiceOptions>(aiSection);
         services.AddHttpClient<IAiClient, HttpAiClient>(client =>
         {
-            client.BaseAddress = new Uri(aiBaseUrl);
-            client.Timeout = TimeSpan.FromMinutes(30);
+            client.BaseAddress = new Uri(aiOptions.BaseUrl);
+            // HttpAiClient gives each call its own limit.
+            client.Timeout = Timeout.InfiniteTimeSpan;
         }).AddHttpMessageHandler<AiAuditHandler>();
         services.AddTransient<AiAuditHandler>();
 

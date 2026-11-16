@@ -12,6 +12,11 @@ from talk_to_rag.llm.contracts import Message, ModelError
 # Local servers ignore the key, but the client library insists on one.
 _PLACEHOLDER_KEY = "not-needed"
 
+# The library's own defaults are 600 seconds and 2 retries. A provider overrides these with
+# timeout_seconds and max_retries; config/models.toml says why they are what they are.
+DEFAULT_TIMEOUT_SECONDS = 120.0
+DEFAULT_MAX_RETRIES = 0
+
 
 class OpenAICompatibleChat:
     def __init__(self, client: Any, model: str, options: Mapping[str, Any]):
@@ -81,7 +86,12 @@ def _client(provider: Mapping[str, Any]) -> Any:
     api_key = os.environ.get(key_env) if key_env else _PLACEHOLDER_KEY
     if not api_key:
         raise ModelError(f"Set the {key_env} environment variable; this provider is configured to need a key.")
-    return OpenAI(base_url=base_url(provider), api_key=api_key)
+    return OpenAI(
+        base_url=base_url(provider),
+        api_key=api_key,
+        timeout=float(provider.get("timeout_seconds", DEFAULT_TIMEOUT_SECONDS)),
+        max_retries=int(provider.get("max_retries", DEFAULT_MAX_RETRIES)),
+    )
 
 
 def base_url(provider: Mapping[str, Any]) -> str:

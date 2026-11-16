@@ -17,6 +17,15 @@ base_url_env = "OLLAMA_BASE_URL"
 # A local server that requires a key (llama.cpp or vLLM started with --api-key) can name the
 # environment variable holding it. The key itself never goes in this file:
 # api_key_env = "LOCAL_SERVER_API_KEY"
+# How long to wait for the server before giving up, in seconds. For a streamed reply this is the
+# longest gap between two pieces, not the whole reply. It leaves room for the slowest call, the 3B
+# model writing flashcards without streaming, while a server silent for two minutes is treated as down.
+# The API gives a call made while someone waits 180 seconds, so this error, which names the model,
+# reaches them first.
+timeout_seconds = 120
+# Retries after a failed call. A local server that timed out or refused a connection is likely to do the
+# same a moment later, and a retry would double the wait, so the error is reported instead.
+max_retries = 0
 
 [providers.offline]
 adapter = "fake"

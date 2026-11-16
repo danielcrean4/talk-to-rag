@@ -77,6 +77,10 @@ A source may carry a free-text `License` and a `SourceUrl` (where it came from; 
 
 `DELETE /api/sources/{id}` deletes the row and then the blob. Database cascades remove its chunks, citations, notebook and tag links and concept passages; questions keep their text with `source_id` set null. The worker writes status with targeted updates and skips a source deleted mid-ingestion.
 
+### Time limits
+
+`HttpAiClient` gives each call to the AI service its own limit through a linked `CancellationTokenSource`; the `HttpClient` itself has none. Ingestion gets `AiService:IngestTimeoutSeconds` (1800). Every other call is made while someone waits and gets `AiService:InteractiveTimeoutSeconds` (180), including the whole of a streamed summary. Running out throws `AiServiceUnavailableException` (503, "The model did not answer in time."), or, once a summary stream has started, ends it with a `data: {"error": …}` event.
+
 ### Search flow
 
 - `POST /api/search` → `SearchService` first calls the AI service's `POST /v1/rag/expand-query`. Without expansion that returns the embedded query; with `expand: true`, gemma rewrites the question into 2–3 queries and each one is embedded.
@@ -139,6 +143,7 @@ Commands, all needing Node on the host: `make web` runs the dev server on **4201
 - Model choice comes from the explicit argument, then the `TALK_TO_RAG_CHAT` / `TALK_TO_RAG_EMBED` environment variables, then `[defaults]`.
 - `TALK_TO_RAG_MODELS` points at a single config file in place of the layered pair.
 - A provider's `base_url_env` overrides its URL; compose sets `OLLAMA_BASE_URL`.
+- A provider's `timeout_seconds` (default 120; for a stream, the longest wait between two pieces) and `max_retries` (default 0) go to the OpenAI client in place of the library's 600 seconds and 2 retries. The timeout stays under the API's interactive limit, so a stalled Ollama comes back as a 503 that names the model.
 - nomic embeddings use the `search_document: ` / `search_query: ` prefixes, so call `embed_documents` and `embed_query` correctly.
 - Tests use the `fake` adapter and `monkeypatch`, so they need neither Ollama nor Docker.
 

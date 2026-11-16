@@ -193,3 +193,22 @@ def test_provider_that_needs_a_key_fails_clearly_without_one(monkeypatch):
 
     with pytest.raises(ModelError, match="LOCAL_SERVER_API_KEY"):
         build_chat(provider, {"name": "some-model"})
+
+
+def test_provider_sets_the_client_timeout_and_retries(monkeypatch):
+    import openai
+
+    clients = []
+    monkeypatch.setattr(openai, "OpenAI", lambda **kwargs: clients.append(kwargs))
+
+    build_chat({"base_url": "http://127.0.0.1:11434/v1", "timeout_seconds": 30, "max_retries": 1}, {"name": "m"})
+    build_chat({"base_url": "http://127.0.0.1:11434/v1"}, {"name": "m"})
+
+    assert (clients[0]["timeout"], clients[0]["max_retries"]) == (30.0, 1)
+    assert (clients[1]["timeout"], clients[1]["max_retries"]) == (120.0, 0)
+
+
+def test_committed_ollama_provider_sets_a_timeout_and_no_retries():
+    provider = load("config/models.toml").providers["ollama"]
+
+    assert (provider["timeout_seconds"], provider["max_retries"]) == (120, 0)

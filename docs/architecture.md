@@ -119,6 +119,12 @@ The SQL in `SearchRepository`:
 - `TALK_TO_RAG_STT=faster-whisper` and `TALK_TO_RAG_TTS=kokoro` turn these on; `compose.yaml` sets both. Without them the routes answer 503.
 - The web app reads summaries aloud through `/api/speech/synthesize`, and use the browser's `speechSynthesis` only when that answers 503.
 
+## Time limits
+
+- `HttpAiClient` gives each call to the AI service its own limit. Ingestion has `AiService:IngestTimeoutSeconds` (default 1800). Every other call, made while someone waits, has `AiService:InteractiveTimeoutSeconds` (default 180): query expansion, both summary routes, transcription, synthesis, concept proposals and flashcards.
+- A call that runs out of time throws `AiServiceUnavailableException`, which the API answers with 503 "The model did not answer in time." The worker marks the source as failed. A streamed summary has to finish within the limit too; if the stream has already started, it ends with a `data: {"error": …}` event instead.
+- The AI service's OpenAI client takes `timeout_seconds` (default 120) and `max_retries` (default 0) from its provider in `config/models.toml`. For a streamed reply the timeout is the longest wait between two pieces. It is shorter than the API's interactive limit, so a stalled Ollama comes back as a 503 that names the model.
+
 ## Concepts and practice
 
 - A `Concept` belongs to a user. `ConceptPrerequisite` rows ("understand B before A") make a graph, and `ConceptService` refuses an edge that would close a loop.
