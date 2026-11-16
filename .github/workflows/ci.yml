@@ -9,6 +9,22 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # The audit server's database tests read the audit schema and log in as the auditor role,
+    # both made by the API's migrations. They fail instead of skipping when CI is set.
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: talk_to_rag
+          POSTGRES_PASSWORD: talk_to_rag
+          POSTGRES_DB: talk_to_rag
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U talk_to_rag -d talk_to_rag"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
     steps:
       - uses: actions/checkout@v4
 
@@ -20,6 +36,11 @@ jobs:
         with:
           version: "0.13.6"
           enable-cache: true
+
+      - name: Apply the API's migrations to Postgres
+        env:
+          ConnectionStrings__TalkToRag: Host=127.0.0.1;Port=5432;Database=talk_to_rag;Username=talk_to_rag;Password=talk_to_rag
+        run: make migrate
 
       # Python tests use the fake model adapters; the .NET integration tests start
       # pgvector with Testcontainers on the runner's Docker. No Ollama needed.

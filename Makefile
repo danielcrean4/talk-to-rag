@@ -26,7 +26,7 @@ ps:
 	docker compose ps
 
 migrate:  ## Apply EF Core migrations to the compose Postgres
-	$(DOTNET_MIGRATE) sh -c 'dotnet tool restore && dotnet ef database update \
+	$(DOTNET_MIGRATE) sh -c 'dotnet tool restore && dotnet restore && dotnet ef database update \
 		--project src/TalkToRag.Infrastructure --startup-project src/TalkToRag.Api'
 
 web:  ## Serve the Angular app on http://127.0.0.1:4201 (needs the stack from `make up`)
@@ -51,7 +51,7 @@ test-ai:
 test-api:
 	$(DOTNET) dotnet test
 
-test-mcp:  ## The database checks are skipped unless the compose Postgres is up
+test-mcp:  ## The database checks are skipped unless the compose Postgres is up, and fail instead when CI is set
 	cd services/mcp && uv run pytest -q
 
 health:  ## Ask each service if it's up

@@ -1,6 +1,6 @@
 #!/bin/sh
 # Scores retrieval on the sample documents in a stack of its own, then removes it.
-# The normal stack and its data are not touched. Fails when a score is under evaluation/minimum_scores.json. Needs Docker and Ollama with nomic-embed-text.
+# The normal stack and its data are not touched. Fails when a sample document fails to ingest or a score is under evaluation/minimum_scores.json. Needs Docker and Ollama with nomic-embed-text.
 set -eu
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -19,6 +19,14 @@ until ! curl -fsS "$api/api/sources" -H "authorization: Bearer $token" | grep -E
   [ "$tries" -gt 120 ] && { echo "sample documents were not ingested in time" >&2; exit 1; }
   sleep 2
 done
+
+curl -fsS "$api/api/sources" -H "authorization: Bearer $token" | python3 -c '
+import json, sys
+failed = [s for s in json.load(sys.stdin) if s["status"] == "Failed"]
+for s in failed:
+    print("%s failed to ingest: %s" % (s["title"], s["failureReason"]), file=sys.stderr)
+sys.exit(1 if failed else 0)
+'
 
 cd "$root/services/ai"
 for mode in hybrid semantic keyword; do

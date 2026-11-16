@@ -1,5 +1,8 @@
+import os
+
 import psycopg
 import pytest
+from psycopg.conninfo import conninfo_to_dict, make_conninfo
 
 from talk_to_rag_audit_mcp import audit
 
@@ -28,10 +31,12 @@ def test_a_reply_too_large_to_read_is_trimmed_to_whole_rows_and_says_so():
 
 @pytest.fixture
 def database():
-    """These tests need the compose database with migrations applied; without it they are skipped."""
+    """These tests need the compose database with migrations applied. Without it they are skipped, or fail when CI is set."""
     try:
         psycopg.connect(audit.dsn(), connect_timeout=2).close()
-    except psycopg.OperationalError:
+    except psycopg.OperationalError as error:
+        if os.environ.get("CI"):
+            pytest.fail(f"CI is set and the audit database is not reachable: {error}")
         pytest.skip("the audit database is not running")
 
 
@@ -78,7 +83,8 @@ def test_a_setting_changed_in_one_call_does_not_reach_the_next(database):
 
 
 def test_refuses_a_login_that_can_read_the_tables(database, monkeypatch):
-    monkeypatch.setenv("TALK_TO_RAG_AUDIT_DSN", "postgresql://talk_to_rag:talk_to_rag@127.0.0.1:5432/talk_to_rag")
+    owner = conninfo_to_dict(audit.dsn()) | {"user": "talk_to_rag", "password": "talk_to_rag"}
+    monkeypatch.setenv("TALK_TO_RAG_AUDIT_DSN", make_conninfo(**owner))
 
     with pytest.raises(audit.AuditError, match="will not use it"):
         audit.run("SELECT 1")

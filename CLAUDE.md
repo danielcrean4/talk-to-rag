@@ -27,7 +27,7 @@ make test      # test-ai + test-api + test-mcp
 make down
 make lint      # Ruff check and format check for services/ai and services/mcp, Prettier check for web/ (fix with `uvx ruff format`, `npm run format`)
 make sample    # load the public-domain texts in sample/
-make eval      # score retrieval on the sample texts in a throwaway stack (project talk-to-rag-eval, API on 5001), then remove it; fails under evaluation/minimum_scores.json, and CI runs it
+make eval      # score retrieval on the sample texts in a throwaway stack (project talk-to-rag-eval, API on 5001), then remove it; fails when a sample fails to ingest or a score is under evaluation/minimum_scores.json, and CI runs it
 ```
 
 Python AI service (`cd services/ai`):
@@ -106,7 +106,7 @@ Every exchange with the AI service is stored in `ai_calls` by `AiAuditHandler`, 
 
 The `audit` schema is what an outside reader may see: views over the redacted columns and over sources, chunks, messages, citations, concepts, questions and attempts, none of which expose source text. `audit.sources` does show each source's license and origin URL, which describe the source rather than quote it. The `talk_to_rag_auditor` role can only `SELECT` from that schema. Text a model wrote from passages (assistant messages, generated questions) appears in the table views by length only; read it, redacted, through `audit.ai_calls`, `audit.model_calls` and `audit.answers`. When a table gains a column an auditor should see, add it to the view in a new migration.
 
-`services/mcp` is a small MCP server (stdio, its own uv project) that gives a model outside the app, such as Claude, read access to the `audit` schema and nothing else. It is registered in `.mcp.json` and has three tools: `describe`, `query` (one `SELECT`, capped rows and cells) and `get_ai_call`. `audit.py` opens a connection per call as `talk_to_rag_auditor`, refuses a login that can read the tables, and runs the statement in a read-only transaction that it rolls back. It must stay read-only: no tool may write to the app or call a model. `TALK_TO_RAG_AUDIT_DSN` overrides the connection string.
+`services/mcp` is a small MCP server (stdio, its own uv project) that gives a model outside the app, such as Claude, read access to the `audit` schema and nothing else. It is registered in `.mcp.json` and has three tools: `describe`, `query` (one `SELECT`, capped rows and cells) and `get_ai_call`. `audit.py` opens a connection per call as `talk_to_rag_auditor`, refuses a login that can read the tables, and runs the statement in a read-only transaction that it rolls back. It must stay read-only: no tool may write to the app or call a model. `TALK_TO_RAG_AUDIT_DSN` overrides the connection string. Its database tests need Postgres with the API's migrations applied: they are skipped when it cannot be reached and fail instead when `CI` is set. The CI `test` job starts a pgvector service container and runs `make migrate` against it before `make test`.
 
 ### .NET layering (Clean Architecture)
 
