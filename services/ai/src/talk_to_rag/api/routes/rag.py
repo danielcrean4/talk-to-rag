@@ -139,6 +139,8 @@ def answer_passages_stream(request: AnswerRequest) -> StreamingResponse:
                 tokens.append(token)
                 yield _event({"token": token})
         except ModelError as exc:
+            # The trace goes first, so the failed call reaches the audit log even if the reader stops at the error.
+            yield _event({"trace": tracing.calls()})
             yield _event({"error": str(exc)})
             return
 

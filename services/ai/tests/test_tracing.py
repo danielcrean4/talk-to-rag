@@ -1,10 +1,11 @@
 import contextlib
+import json
 
 from fastapi.testclient import TestClient
 
 from talk_to_rag import tracing
 from talk_to_rag.api.app import create_app
-from talk_to_rag.llm import Message, chat_model
+from talk_to_rag.llm import Message, ModelError, chat_model
 
 
 def _passages():
@@ -33,6 +34,25 @@ def test_streamed_answer_sends_its_trace_before_the_done_event(monkeypatch):
     lines = [line for line in response.text.splitlines() if line]
     assert lines[-2].startswith('data: {"trace": [{"kind": "chat"')
     assert lines[-1].startswith('data: {"done": true')
+
+
+def test_streamed_answer_sends_its_trace_when_the_model_fails(monkeypatch):
+    class FailsMidStream:
+        def stream(self, messages):
+            yield "Temporal "
+            raise ModelError("local-3b: Request timed out.")
+
+    traced = tracing.TracedChat(FailsMidStream(), "local-3b", "ministral")
+    monkeypatch.setattr("talk_to_rag.api.routes.rag.chat_model", lambda _: traced)
+
+    response = TestClient(create_app()).post("/v1/rag/answer/stream", json={"question": "What is TD?", "passages": _passages()})
+
+    lines = [line for line in response.text.splitlines() if line]
+    trace = json.loads(lines[-2].removeprefix("data: "))["trace"]
+    assert [(call["model"], call["completion"], call["error"]) for call in trace] == [
+        ("local-3b", "Temporal ", "local-3b: Request timed out.")
+    ]
+    assert json.loads(lines[-1].removeprefix("data: ")) == {"error": "local-3b: Request timed out."}
 
 
 def test_traces_do_not_leak_between_requests(monkeypatch):

@@ -97,7 +97,7 @@ sequenceDiagram
     UI->>Api: GET /api/search/{conversationId}/summary/stream (or POST .../summary)
     Api->>Ai: POST /v1/rag/answer/stream (or /v1/rag/answer)
     Note over Ai: Ministral 3 3B (local-3b) answers with [n] markers<br/>numbers that match no passage are dropped
-    Ai-->>Api: SSE lines: tokens, then the trace, then done with cited
+    Ai-->>Api: SSE lines: tokens, then the trace, then done with cited<br/>(if the model fails: the trace, then an error)
     Api-->>UI: the same lines, without the trace
     Api->>Db: INSERT assistant message and the citations it used
 ```
@@ -140,7 +140,7 @@ The SQL in `SearchRepository`:
 
 - `AiAuditHandler`, a `DelegatingHandler` on the API's AI-service `HttpClient`, writes every request and response to `ai_calls`, once as sent and once redacted by `AuditJson`.
 - A row's `user_id` is the signed-in user. Ingestion runs outside a request, so `SourceIngestionWorker` names the source's owner with `BackgroundAuditUser` around the call, and the handler uses that when there is no signed-in user.
-- The AI service adds a `trace` list to its responses (`tracing.py`), one entry per model call with the messages and the completion.
+- The AI service adds a `trace` list to its responses (`tracing.py`), one entry per model call with the messages and the completion. A streamed summary sends it as an event before `done`, or before `error` when the model fails, so a failed call is stored too.
 - Redaction replaces passage text, and earlier answers sent as context, with a placeholder that gives the length. It also replaces any run of 40 or more letters and digits that a model reply copied from them.
 - The `audit` schema holds views over the redacted columns and over the tables, without source text. The role `talk_to_rag_auditor` may only `SELECT` from it.
 - `services/mcp` exposes that schema to an MCP client over stdio (`.mcp.json`) with the tools `describe`, `query` and `get_ai_call`. Each call opens a connection as the auditor role and runs in a read-only transaction that is rolled back.
