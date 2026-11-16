@@ -37,6 +37,11 @@ public sealed class PracticeController(IPracticeService practiceService) : Contr
         return NoContent();
     }
 
+    /// <summary>The questions due for review now across the user's concepts, then a few never answered.</summary>
+    [HttpGet("practice/due")]
+    public Task<DueCardsDto> ListDue(CancellationToken cancellationToken) =>
+        practiceService.ListDueAsync(cancellationToken);
+
     /// <summary>Records an answer from flashcards, a quiz or a game, and returns the concept's updated mastery.</summary>
     [HttpPost("attempts")]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

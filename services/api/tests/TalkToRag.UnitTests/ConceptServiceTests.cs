@@ -242,6 +242,7 @@ public class ConceptServiceTests
     {
         public Task<List<Attempt>> ListAttemptsAsync(Guid userId, CancellationToken cancellationToken) => Task.FromResult(new List<Attempt>());
         public Task<List<Question>> ListQuestionsAsync(Guid conceptId, Guid userId, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task<List<Question>> ListQuestionsForUserAsync(Guid userId, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<Question?> FindQuestionAsync(Guid id, Guid userId, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<string> GetTextAtAsync(Guid sourceId, int pageNumber, string? section, int maxLength, CancellationToken cancellationToken) => throw new NotImplementedException();
         public void Add(Question question) => throw new NotImplementedException();

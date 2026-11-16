@@ -5,6 +5,7 @@ namespace TalkToRag.Application.Common.Interfaces;
 public interface IPracticeRepository
 {
     Task<List<Question>> ListQuestionsAsync(Guid conceptId, Guid userId, CancellationToken cancellationToken);
+    Task<List<Question>> ListQuestionsForUserAsync(Guid userId, CancellationToken cancellationToken);
     Task<Question?> FindQuestionAsync(Guid id, Guid userId, CancellationToken cancellationToken);
     Task<List<Attempt>> ListAttemptsAsync(Guid userId, CancellationToken cancellationToken);
 

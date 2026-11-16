@@ -1,6 +1,7 @@
 using TalkToRag.Application.Common.Exceptions;
 using TalkToRag.Application.Common.Interfaces;
 using TalkToRag.Domain.Entities;
+using TalkToRag.Domain.Enums;
 
 namespace TalkToRag.Application.Practice;
 
@@ -17,13 +18,47 @@ public sealed class PracticeService(
     private const int QuestionsPerGeneration = 4;
     private const int MaxPlatformLength = 60;
 
+    /// <summary>How many never-answered questions a review offers, so a batch of new flashcards does not swamp the due ones.</summary>
+    public const int NewPerReview = 10;
+
     public async Task<IReadOnlyList<QuestionDto>> ListQuestionsAsync(Guid conceptId, CancellationToken cancellationToken)
     {
         await RequireConceptAsync(conceptId, cancellationToken);
         var questions = await practiceRepository.ListQuestionsAsync(conceptId, currentUser.UserId, cancellationToken);
-        var attempts = await practiceRepository.ListAttemptsAsync(currentUser.UserId, cancellationToken);
+        var attempts = await AttemptsByQuestionAsync(cancellationToken);
         var titles = await TitlesAsync(questions, cancellationToken);
-        return questions.Select(q => ToDto(q, titles, attempts)).ToList();
+        return questions.Select(q => ToDto(q, titles, attempts[q.Id])).ToList();
+    }
+
+    public async Task<DueCardsDto> ListDueAsync(CancellationToken cancellationToken)
+    {
+        var now = timeProvider.GetUtcNow();
+        var concepts = (await conceptRepository.ListForUserAsync(currentUser.UserId, cancellationToken))
+            .Where(c => c.State != ProposalState.Rejected)
+            .ToDictionary(c => c.Id);
+        var questions = (await practiceRepository.ListQuestionsForUserAsync(currentUser.UserId, cancellationToken))
+            .Where(q => concepts.ContainsKey(q.ConceptId))
+            .ToList();
+        var attempts = await AttemptsByQuestionAsync(cancellationToken);
+
+        var scheduled = questions
+            .Select(q => (Question: q, Card: Fsrs.Replay(attempts[q.Id].Select(a => (a.AnsweredAtUtc, a.Score)))))
+            .ToList();
+        var due = scheduled
+            .Where(s => s.Card is { } card && card.DueUtc <= now)
+            .OrderBy(s => s.Card!.DueUtc)
+            .Select(s => s.Question)
+            .ToList();
+        var fresh = scheduled.Where(s => s.Card is null).Select(s => s.Question).ToList();
+
+        var offered = due.Concat(fresh.Take(NewPerReview)).ToList();
+        var titles = await TitlesAsync(offered, cancellationToken);
+        var counts = concepts.Values
+            .Select(c => new DueConceptDto(c.Id, c.Name, due.Count(q => q.ConceptId == c.Id), fresh.Count(q => q.ConceptId == c.Id)))
+            .Where(c => c.Due > 0 || c.New > 0)
+            .OrderBy(c => c.ConceptName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        return new DueCardsDto(offered.Select(q => ToDto(q, titles, attempts[q.Id])).ToList(), due.Count, fresh.Count, counts);
     }
 
     public async Task<QuestionDto> AddQuestionAsync(Guid conceptId, CreateQuestionRequest request, CancellationToken cancellationToken)
@@ -131,7 +166,10 @@ public sealed class PracticeService(
         await practiceRepository.SaveChangesAsync(cancellationToken);
 
         var attempts = await practiceRepository.ListAttemptsAsync(currentUser.UserId, cancellationToken);
-        return new AttemptResultDto(conceptId, MasteryDto.From(attempts.Where(a => a.ConceptId == conceptId).ToList()));
+        var dueAtUtc = request.QuestionId is { } answered
+            ? Fsrs.Replay(attempts.Where(a => a.QuestionId == answered).Select(a => (a.AnsweredAtUtc, a.Score)))?.DueUtc
+            : null;
+        return new AttemptResultDto(conceptId, MasteryDto.From(attempts.Where(a => a.ConceptId == conceptId).ToList()), dueAtUtc);
     }
 
     private async Task<Concept> RequireConceptAsync(Guid conceptId, CancellationToken cancellationToken)
@@ -139,6 +177,11 @@ public sealed class PracticeService(
         var concepts = await conceptRepository.ListForUserAsync(currentUser.UserId, cancellationToken);
         return concepts.FirstOrDefault(c => c.Id == conceptId) ?? throw new NotFoundException($"Concept '{conceptId}' not found.");
     }
+
+    private async Task<ILookup<Guid?, Attempt>> AttemptsByQuestionAsync(CancellationToken cancellationToken) =>
+        (await practiceRepository.ListAttemptsAsync(currentUser.UserId, cancellationToken))
+            .Where(a => a.QuestionId is not null)
+            .ToLookup(a => a.QuestionId);
 
     private async Task<Dictionary<Guid, string>> TitlesAsync(IEnumerable<Question> questions, CancellationToken cancellationToken)
     {
@@ -170,9 +213,10 @@ public sealed class PracticeService(
         CreatedAtUtc = timeProvider.GetUtcNow()
     };
 
-    private static QuestionDto ToDto(Question question, Dictionary<Guid, string> titles, IReadOnlyCollection<Attempt> attempts)
+    /// <param name="attempts">This question's own attempts.</param>
+    private static QuestionDto ToDto(Question question, Dictionary<Guid, string> titles, IEnumerable<Attempt> attempts)
     {
-        var own = attempts.Where(a => a.QuestionId == question.Id).OrderByDescending(a => a.AnsweredAtUtc).ToList();
+        var own = attempts.OrderByDescending(a => a.AnsweredAtUtc).ToList();
         return new QuestionDto(
             question.Id,
             question.ConceptId,
@@ -185,6 +229,7 @@ public sealed class PracticeService(
             question.PageLabel,
             question.Section,
             own.Count,
-            own.Count > 0 ? own[0].Score : null);
+            own.Count > 0 ? own[0].Score : null,
+            Fsrs.Replay(own.Select(a => (a.AnsweredAtUtc, a.Score)))?.DueUtc);
     }
 }

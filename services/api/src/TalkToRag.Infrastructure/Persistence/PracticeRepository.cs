@@ -12,6 +12,13 @@ public sealed class PracticeRepository(TalkToRagDbContext db) : IPracticeReposit
             .OrderBy(q => q.CreatedAtUtc)
             .ToListAsync(cancellationToken);
 
+    public Task<List<Question>> ListQuestionsForUserAsync(Guid userId, CancellationToken cancellationToken) =>
+        db.Questions
+            .AsNoTracking()
+            .Where(q => q.UserId == userId)
+            .OrderBy(q => q.CreatedAtUtc)
+            .ToListAsync(cancellationToken);
+
     public Task<Question?> FindQuestionAsync(Guid id, Guid userId, CancellationToken cancellationToken) =>
         db.Questions.FirstOrDefaultAsync(q => q.Id == id && q.UserId == userId, cancellationToken);
 
