@@ -27,7 +27,7 @@ make test      # test-ai + test-api + test-mcp
 make down
 make lint      # Ruff check and format check for services/ai and services/mcp, Prettier check for web/ (fix with `uvx ruff format`, `npm run format`)
 make sample    # load the public-domain texts in sample/
-make eval      # score retrieval on the sample texts in a throwaway stack (project talk-to-rag-eval, API on 5001), then remove it; fails under evaluation/minimum_scores.json, and CI runs it
+make eval      # score retrieval on the sample texts in a throwaway stack (project talk-to-rag-eval, API on 5001), then remove it; fails when a sample fails to ingest or a score is under evaluation/minimum_scores.json, and CI runs it
 ```
 
 Python AI service (`cd services/ai`):
