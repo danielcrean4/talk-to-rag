@@ -60,6 +60,30 @@ describe('SearchSession', () => {
     expect(session.summarizing()).toBe(false);
   });
 
+  it('drops a search that a newer one replaced, so its summary is never asked for', () => {
+    session.search('first', { notebookId: null, tagIds: [] });
+    const first = http.expectOne('/api/search');
+    session.search('second', { notebookId: null, tagIds: [] });
+    const second = http.expectOne('/api/search');
+
+    expect(first.cancelled).toBe(true);
+    second.flush({ conversationId: 'c2', query: 'second', groups: FOUND });
+    expect(session.conversationId()).toBe('c2');
+    http.expectOne('/api/search/c2/summary/stream').flush('data: {"done": true, "cited": []}\n\n');
+  });
+
+  it('drops a search in flight when the user starts over', () => {
+    session.search('tides', { notebookId: null, tagIds: [] });
+    const request = http.expectOne('/api/search');
+
+    session.startOver();
+
+    expect(request.cancelled).toBe(true);
+    expect(session.searching()).toBe(false);
+    expect(session.results()).toBeNull();
+    expect(session.conversationId()).toBeNull();
+  });
+
   it('keeps the passages and reports the error when the summary fails', () => {
     search(FOUND);
     http

@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { Api, Concept, Question } from '../api';
 import { errorMessage } from '../auth';
+import { latestRequest } from '../latest-request';
 import { Flashcard } from './flashcard';
 import {
   FLASHCARDS_PLATFORM,
@@ -23,6 +24,7 @@ import {
 })
 export class PracticePage {
   private readonly api = inject(Api);
+  private readonly loadRun = latestRequest();
 
   /** Bound from the `concepts/:id/practice` route. */
   readonly id = input.required<string>();
@@ -60,7 +62,11 @@ export class PracticePage {
     });
   }
 
+  /** Ignores a mark while the last one is saving, or for a card no longer shown. */
   rate(question: Question, score: number): void {
+    if (this.busy() || question.id !== this.card()?.id) {
+      return;
+    }
     this.busy.set('Saving');
     this.error.set('');
     this.api.recordAttempt(question.id, FLASHCARDS_PLATFORM, score).subscribe({
@@ -107,7 +113,7 @@ export class PracticePage {
     this.loaded.set(false);
     this.busy.set('Loading');
     this.error.set('');
-    forkJoin([this.api.details(conceptId), this.api.questions(conceptId)]).subscribe({
+    this.loadRun.run(forkJoin([this.api.details(conceptId), this.api.questions(conceptId)]), {
       next: ([details, questions]) => {
         this.busy.set('');
         this.concept.set(details.concept);
