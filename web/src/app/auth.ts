@@ -2,7 +2,7 @@ import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
-import { User } from './api';
+import { User } from './api/auth-api';
 
 const STORAGE_KEY = 'talk-to-rag.token';
 

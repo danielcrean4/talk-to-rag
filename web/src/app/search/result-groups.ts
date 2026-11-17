@@ -1,5 +1,5 @@
 import { Component, input } from '@angular/core';
-import { PassageGroup, PassageHit } from '../api';
+import { PassageGroup, PassageHit } from '../api/search-api';
 import { FileTarget, isPaged, locationLabel } from '../passages';
 import { Snippet } from '../snippet';
 import { SourceFileLink } from '../source-file-link';

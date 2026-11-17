@@ -1,33 +1,31 @@
-import { DatePipe } from '@angular/common';
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Observable, concatMap, from, toArray } from 'rxjs';
-import { Api, Notebook, Source, Tag } from '../api';
-import { errorMessage } from '../auth';
-import { SourceFileLink } from '../source-file-link';
+import { concatMap, from, toArray } from 'rxjs';
+import { Activity } from '../activity';
+import { Notebook, NotebooksApi } from '../api/notebooks-api';
+import { Source, SourceDetailsChange, SourcesApi } from '../api/sources-api';
+import { Tag, TagsApi } from '../api/tags-api';
 import { SearchSession } from '../search/search-session';
-import { knownTagIds, tagCount, tagsOff, tagsOn, toggleId, withAnyTag } from '../tags';
-import {
-  anyWorking,
-  failureNotice,
-  formatBytes,
-  inNotebook,
-  originHost,
-  reprocessLabel,
-  safeHttpUrl,
-} from './source-list';
+import { knownTagIds, tagCount, toggleId, withAnyTag } from '../tags';
+import { NotebookBar, SourceDrop } from './notebook-bar';
+import { SourceCard } from './source-card';
+import { anyWorking, inNotebook, safeHttpUrl } from './source-list';
+import { TagEditor } from './tag-editor';
 
-const SOURCE_DRAG_TYPE = 'application/x-talk-to-rag-source';
 const POLL_MS = 3000;
 
 @Component({
   selector: 'app-sources-page',
-  imports: [DatePipe, FormsModule, SourceFileLink],
+  imports: [FormsModule, NotebookBar, SourceCard, TagEditor],
   templateUrl: './sources-page.html',
-  styleUrl: './sources-page.css',
+  styleUrls: ['./sources-shared.css', './sources-page.css'],
+  providers: [Activity],
 })
 export class SourcesPage implements OnDestroy {
-  private readonly api = inject(Api);
+  private readonly sourcesApi = inject(SourcesApi);
+  private readonly notebooksApi = inject(NotebooksApi);
+  private readonly tagsApi = inject(TagsApi);
+  private readonly activity = inject(Activity);
   private pollTimer: ReturnType<typeof setInterval> | null = null;
 
   protected readonly matched = inject(SearchSession).matchedSourceIds;
@@ -44,30 +42,19 @@ export class SourcesPage implements OnDestroy {
       knownTagIds(this.tagFilter(), this.tags()),
     ),
   );
-  protected readonly busy = signal('');
-  protected readonly error = signal('');
+  protected readonly busy = this.activity.busy;
+  protected readonly error = this.activity.error;
   protected readonly dragging = signal(false);
-  protected readonly dropTarget = signal<string | 'files' | null>(null);
+  protected readonly overFiles = signal(false);
   protected readonly creating = signal(false);
   protected readonly confirmingDelete = signal<string | null>(null);
   protected readonly editingTags = signal(false);
-  protected readonly confirmingTagDelete = signal<string | null>(null);
+  /** The source whose license and origin are being edited. */
+  protected readonly editingDetails = signal<string | null>(null);
   protected newName = '';
   protected newDescription = '';
-  protected newTagName = '';
-  /** The source whose license and origin are being edited; the drafts live here so polling cannot wipe them. */
-  protected readonly editingDetails = signal<string | null>(null);
-  protected draftLicense = '';
-  protected draftSourceUrl = '';
 
-  protected readonly formatBytes = formatBytes;
-  protected readonly reprocessLabel = reprocessLabel;
-  protected readonly failureNotice = failureNotice;
-  protected readonly tagsOn = tagsOn;
-  protected readonly tagsOff = tagsOff;
   protected readonly tagCount = tagCount;
-  protected readonly safeHttpUrl = safeHttpUrl;
-  protected readonly originHost = originHost;
 
   constructor() {
     this.loadSources();
@@ -100,10 +87,10 @@ export class SourcesPage implements OnDestroy {
       return;
     }
     const uploads = from(list).pipe(
-      concatMap((file) => this.api.uploadSource(file)),
+      concatMap((file) => this.sourcesApi.uploadSource(file)),
       toArray(),
     );
-    this.run(
+    this.activity.run(
       list.length === 1 ? `Uploading ${list[0].name}` : `Uploading ${list.length} files`,
       uploads,
       () => this.loadSources(),
@@ -113,12 +100,12 @@ export class SourcesPage implements OnDestroy {
   reprocess(source: Source): void {
     const label =
       source.status === 'Ready' ? `Processing ${source.title} again` : `Retrying ${source.title}`;
-    this.run(label, this.api.retrySource(source.id), () => this.loadSources());
+    this.activity.run(label, this.sourcesApi.retrySource(source.id), () => this.loadSources());
   }
 
   remove(source: Source): void {
     this.confirmingDelete.set(null);
-    this.run(`Deleting ${source.title}`, this.api.deleteSource(source.id), () => {
+    this.activity.run(`Deleting ${source.title}`, this.sourcesApi.deleteSource(source.id), () => {
       this.sources.update((sources) => sources.filter((item) => item.id !== source.id));
       this.loadSources();
       this.loadNotebooks();
@@ -134,9 +121,9 @@ export class SourcesPage implements OnDestroy {
     if (!notebook) {
       return;
     }
-    this.run(
+    this.activity.run(
       `Adding ${source.title} to ${notebook.name}`,
-      this.api.addSourceToNotebook(notebook.id, source.id),
+      this.notebooksApi.addSourceToNotebook(notebook.id, source.id),
       () => {
         this.loadNotebooks();
         if (this.notebookId() === notebook.id) {
@@ -151,9 +138,9 @@ export class SourcesPage implements OnDestroy {
     if (!name) {
       return;
     }
-    this.run(
+    this.activity.run(
       'Creating notebook',
-      this.api.createNotebook(name, this.newDescription.trim() || null),
+      this.notebooksApi.createNotebook(name, this.newDescription.trim() || null),
       (notebook) => {
         this.newName = '';
         this.newDescription = '';
@@ -170,7 +157,6 @@ export class SourcesPage implements OnDestroy {
 
   toggleEditingTags(): void {
     this.creating.set(false);
-    this.confirmingTagDelete.set(null);
     this.editingTags.update((open) => !open);
   }
 
@@ -178,24 +164,14 @@ export class SourcesPage implements OnDestroy {
     this.tagFilter.update((ids) => toggleId(ids, tagId));
   }
 
-  createTag(): void {
-    const name = this.newTagName.trim();
-    if (!name) {
-      return;
-    }
-    this.run('Creating tag', this.api.createTag(name), (tag) => {
-      this.newTagName = '';
-      this.tags.update((tags) => [...tags, tag]);
-    });
+  tagCreated(tag: Tag): void {
+    this.tags.update((tags) => [...tags, tag]);
   }
 
-  deleteTag(tag: Tag): void {
-    this.confirmingTagDelete.set(null);
-    this.run(`Deleting tag ${tag.name}`, this.api.deleteTag(tag.id), () => {
-      this.tags.update((tags) => tags.filter((item) => item.id !== tag.id));
-      this.tagFilter.update((ids) => ids.filter((id) => id !== tag.id));
-      this.setSourceTags((ids) => ids.filter((id) => id !== tag.id));
-    });
+  tagDeleted(tag: Tag): void {
+    this.tags.update((tags) => tags.filter((item) => item.id !== tag.id));
+    this.tagFilter.update((ids) => ids.filter((id) => id !== tag.id));
+    this.setSourceTags((ids) => ids.filter((id) => id !== tag.id));
   }
 
   tagSource(source: Source, tagId: string): void {
@@ -203,37 +179,36 @@ export class SourcesPage implements OnDestroy {
     if (!tag) {
       return;
     }
-    this.run(
+    this.activity.run(
       `Adding tag ${tag.name} to ${source.title}`,
-      this.api.tagSource(source.id, tag.id),
+      this.tagsApi.tagSource(source.id, tag.id),
       () => this.setSourceTags((ids) => (ids.includes(tag.id) ? ids : [...ids, tag.id]), source.id),
     );
   }
 
   untagSource(source: Source, tag: Tag): void {
-    this.run(
+    this.activity.run(
       `Removing tag ${tag.name} from ${source.title}`,
-      this.api.untagSource(source.id, tag.id),
+      this.tagsApi.untagSource(source.id, tag.id),
       () => this.setSourceTags((ids) => ids.filter((id) => id !== tag.id), source.id),
     );
   }
 
-  editDetails(source: Source): void {
-    this.draftLicense = source.license ?? '';
-    this.draftSourceUrl = source.sourceUrl ?? '';
-    this.error.set('');
-    this.editingDetails.set(source.id);
+  editDetails(source: Source, open: boolean): void {
+    if (open) {
+      this.error.set('');
+    }
+    this.editingDetails.set(open ? source.id : null);
   }
 
-  saveDetails(source: Source): void {
-    const sourceUrl = this.draftSourceUrl.trim();
-    if (sourceUrl && !safeHttpUrl(sourceUrl)) {
+  saveDetails(source: Source, changes: Required<SourceDetailsChange>): void {
+    if (changes.sourceUrl && !safeHttpUrl(changes.sourceUrl)) {
       this.error.set('The origin must be a full http:// or https:// address.');
       return;
     }
-    this.run(
+    this.activity.run(
       `Saving details of ${source.title}`,
-      this.api.updateSource(source.id, { license: this.draftLicense.trim(), sourceUrl }),
+      this.sourcesApi.updateSource(source.id, changes),
       (saved) => {
         this.editingDetails.set(null);
         this.sources.update((sources) =>
@@ -247,36 +222,18 @@ export class SourcesPage implements OnDestroy {
     );
   }
 
-  dragSource(event: DragEvent, source: Source): void {
-    event.dataTransfer?.setData(SOURCE_DRAG_TYPE, source.id);
-    if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = 'link';
-    }
-    this.dragging.set(true);
-  }
-
-  dragOverNotebook(event: DragEvent, notebook: Notebook): void {
-    if (event.dataTransfer?.types.includes(SOURCE_DRAG_TYPE)) {
-      event.preventDefault();
-      event.dataTransfer.dropEffect = 'link';
-      this.dropTarget.set(notebook.id);
-    }
-  }
-
-  dropOnNotebook(event: DragEvent, notebook: Notebook): void {
-    const sourceId = event.dataTransfer?.getData(SOURCE_DRAG_TYPE);
+  dropOnNotebook(drop: SourceDrop): void {
     this.endDrag();
-    const source = this.sources().find((item) => item.id === sourceId);
+    const source = this.sources().find((item) => item.id === drop.sourceId);
     if (source) {
-      event.preventDefault();
-      this.addToNotebook(source, notebook.id);
+      this.addToNotebook(source, drop.notebookId);
     }
   }
 
   dragOverFiles(event: DragEvent): void {
     if (event.dataTransfer?.types.includes('Files')) {
       event.preventDefault();
-      this.dropTarget.set('files');
+      this.overFiles.set(true);
     }
   }
 
@@ -290,7 +247,7 @@ export class SourcesPage implements OnDestroy {
 
   endDrag(): void {
     this.dragging.set(false);
-    this.dropTarget.set(null);
+    this.overFiles.set(false);
   }
 
   ngOnDestroy(): void {
@@ -298,27 +255,27 @@ export class SourcesPage implements OnDestroy {
   }
 
   private loadSources(): void {
-    this.api.sources().subscribe({
+    this.sourcesApi.sources().subscribe({
       next: (sources) => {
         this.sources.set(sources);
         this.loaded.set(true);
         this.pollWhileWorking(sources);
       },
-      error: (error) => this.error.set(errorMessage(error)),
+      error: (error) => this.activity.fail(error),
     });
   }
 
   private loadNotebooks(): void {
-    this.api.notebooks().subscribe({
+    this.notebooksApi.notebooks().subscribe({
       next: (notebooks) => this.notebooks.set(notebooks),
-      error: (error) => this.error.set(errorMessage(error)),
+      error: (error) => this.activity.fail(error),
     });
   }
 
   private loadTags(): void {
-    this.api.tags().subscribe({
+    this.tagsApi.tags().subscribe({
       next: (tags) => this.tags.set(tags),
-      error: (error) => this.error.set(errorMessage(error)),
+      error: (error) => this.activity.fail(error),
     });
   }
 
@@ -334,13 +291,13 @@ export class SourcesPage implements OnDestroy {
   }
 
   private refreshNotebook(id: string): void {
-    this.api.notebook(id).subscribe({
+    this.notebooksApi.notebook(id).subscribe({
       next: (details) => {
         if (this.notebookId() === id) {
           this.notebookSourceIds.set(details.sourceIds);
         }
       },
-      error: (error) => this.error.set(errorMessage(error)),
+      error: (error) => this.activity.fail(error),
     });
   }
 
@@ -358,20 +315,5 @@ export class SourcesPage implements OnDestroy {
       clearInterval(this.pollTimer);
       this.pollTimer = null;
     }
-  }
-
-  private run<T>(label: string, request: Observable<T>, done: (result: T) => void): void {
-    this.busy.set(label);
-    this.error.set('');
-    request.subscribe({
-      next: (result) => {
-        this.busy.set('');
-        done(result);
-      },
-      error: (error) => {
-        this.busy.set('');
-        this.error.set(errorMessage(error));
-      },
-    });
   }
 }

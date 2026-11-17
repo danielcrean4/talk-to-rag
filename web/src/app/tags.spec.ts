@@ -1,4 +1,5 @@
-import { Source, Tag } from './api';
+import { Source } from './api/sources-api';
+import { Tag } from './api/tags-api';
 import { knownTagIds, tagCount, tagsOff, tagsOn, toggleId, withAnyTag } from './tags';
 
 const tag = (id: string): Tag => ({ id, name: id, createdAtUtc: '2026-01-01T00:00:00Z' });

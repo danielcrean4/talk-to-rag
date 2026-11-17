@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy, effect, inject, input, signal, untracked } from '@angular/core';
 import { Subscription } from 'rxjs';
-import { Api } from './api';
+import { SpeechApi } from './api/speech-api';
 import { spokenText } from './passages';
 
 /** The API refuses longer text. */
@@ -48,7 +48,7 @@ export class ReadAloud implements OnDestroy {
   protected readonly note = signal('');
   protected readonly hasAudio = signal(false);
 
-  private readonly api = inject(Api);
+  private readonly api = inject(SpeechApi);
   private request?: Subscription;
   private audio?: HTMLAudioElement;
   private audioUrl?: string;

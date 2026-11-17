@@ -1,4 +1,5 @@
-import { Source, Tag } from './api';
+import { Source } from './api/sources-api';
+import { Tag } from './api/tags-api';
 
 /** Adds the id to the picked ones, or takes it out if it is already there. */
 export function toggleId(ids: string[], id: string): string[] {

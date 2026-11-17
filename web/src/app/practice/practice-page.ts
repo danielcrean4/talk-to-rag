@@ -1,7 +1,8 @@
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
-import { Api, Concept, Question } from '../api';
+import { Concept, ConceptsApi } from '../api/concepts-api';
+import { PracticeApi, Question } from '../api/practice-api';
 import { errorMessage } from '../auth';
 import { latestRequest } from '../latest-request';
 import { Flashcard } from './flashcard';
@@ -23,7 +24,8 @@ import {
   styleUrl: './practice-page.css',
 })
 export class PracticePage {
-  private readonly api = inject(Api);
+  private readonly conceptsApi = inject(ConceptsApi);
+  private readonly practiceApi = inject(PracticeApi);
   private readonly loadRun = latestRequest();
 
   /** Bound from the `concepts/:id/practice` route. */
@@ -69,7 +71,7 @@ export class PracticePage {
     }
     this.busy.set('Saving');
     this.error.set('');
-    this.api.recordAttempt(question.id, FLASHCARDS_PLATFORM, score).subscribe({
+    this.practiceApi.recordAttempt(question.id, FLASHCARDS_PLATFORM, score).subscribe({
       next: (result) => {
         this.busy.set('');
         this.concept.update((concept) => concept && { ...concept, mastery: result.mastery });
@@ -95,7 +97,7 @@ export class PracticePage {
   generate(conceptId: string): void {
     this.busy.set('Asking the local model for flashcards');
     this.error.set('');
-    this.api.generateQuestions(conceptId).subscribe({
+    this.practiceApi.generateQuestions(conceptId).subscribe({
       next: (added) => {
         this.busy.set('');
         if (added.length === 0) {
@@ -113,19 +115,22 @@ export class PracticePage {
     this.loaded.set(false);
     this.busy.set('Loading');
     this.error.set('');
-    this.loadRun.run(forkJoin([this.api.details(conceptId), this.api.questions(conceptId)]), {
-      next: ([details, questions]) => {
-        this.busy.set('');
-        this.concept.set(details.concept);
-        this.questions.set(questions);
-        this.again();
-        this.loaded.set(true);
+    this.loadRun.run(
+      forkJoin([this.conceptsApi.details(conceptId), this.practiceApi.questions(conceptId)]),
+      {
+        next: ([details, questions]) => {
+          this.busy.set('');
+          this.concept.set(details.concept);
+          this.questions.set(questions);
+          this.again();
+          this.loaded.set(true);
+        },
+        error: (error) => {
+          this.fail(error);
+          this.loaded.set(true);
+        },
       },
-      error: (error) => {
-        this.fail(error);
-        this.loaded.set(true);
-      },
-    });
+    );
   }
 
   private fail(error: unknown): void {

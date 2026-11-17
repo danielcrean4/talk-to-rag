@@ -1,0 +1,162 @@
+@let concept = this.concept();
+<aside class="panel" aria-label="Concept details">
+  <input
+    class="title"
+    #nameInput
+    [value]="concept.name"
+    (change)="rename.emit(nameInput.value)"
+    aria-label="Concept name"
+  />
+  <textarea
+    #summaryInput
+    rows="2"
+    [value]="concept.summary ?? ''"
+    placeholder="What is it, in a sentence?"
+    aria-label="Summary"
+    (change)="saveSummary.emit(summaryInput.value)"
+  ></textarea>
+
+  @if (concept.state === 'Proposed') {
+    <div class="proposal">
+      <span>Suggested by the model.</span>
+      <button class="primary" type="button" (click)="accept.emit()" [disabled]="busy()">
+        Keep
+      </button>
+      <button type="button" (click)="dismiss.emit()" [disabled]="busy()">Dismiss</button>
+    </div>
+  }
+
+  <h3>Practice</h3>
+  <div class="row practice">
+    <span class="badge mastery" [attr.data-level]="concept.mastery.level">{{
+      concept.mastery.level
+    }}</span>
+    <span class="quiet">{{ masteryDetail(concept.mastery) }}</span>
+  </div>
+  <div class="row">
+    <a class="button" [routerLink]="['/concepts', concept.id, 'practice']">Flashcards</a>
+    @if (cards(); as cards) {
+      @if (cards.due || cards.new) {
+        <span class="quiet">{{ dueSummary(cards.due, cards.new) }}</span>
+      }
+    }
+  </div>
+
+  <h3>Builds on</h3>
+  @if (prerequisites().length === 0) {
+    <p class="quiet">No prerequisites yet.</p>
+  }
+  <ul class="links">
+    @for (item of prerequisites(); track item.concept.id) {
+      <li [class.proposed]="item.link.state === 'Proposed'">
+        <button type="button" class="link-name" (click)="open.emit(item.concept)">
+          {{ item.concept.name }}
+        </button>
+        @if (item.link.state === 'Proposed' && item.concept.state === 'Accepted') {
+          <button type="button" (click)="addPrerequisite.emit(item.concept.id)" [disabled]="busy()">
+            Keep link
+          </button>
+        }
+        <button
+          type="button"
+          class="icon"
+          [attr.aria-label]="'Remove link to ' + item.concept.name"
+          (click)="removePrerequisite.emit(item.concept.id)"
+          [disabled]="busy()"
+        >
+          ×
+        </button>
+      </li>
+    }
+  </ul>
+  <div class="row">
+    <button type="button" (click)="propose.emit()" [disabled]="busy()">
+      Suggest prerequisites
+    </button>
+  </div>
+  @if (linkable().length) {
+    <div class="row">
+      <select
+        [(ngModel)]="prerequisiteToAdd"
+        aria-label="Existing concept to link as a prerequisite"
+      >
+        <option value="">Link an existing concept…</option>
+        @for (option of linkable(); track option.id) {
+          <option [value]="option.id">{{ option.name }}</option>
+        }
+      </select>
+      <button
+        type="button"
+        (click)="addPrerequisite.emit(prerequisiteToAdd())"
+        [disabled]="!prerequisiteToAdd() || busy()"
+      >
+        Link
+      </button>
+    </div>
+  }
+  <div class="row">
+    <input
+      [(ngModel)]="splitNames"
+      placeholder="Split into: limits, derivatives"
+      aria-label="Names to split this concept into, separated by commas"
+    />
+    <button type="button" (click)="split.emit()" [disabled]="!splitNames().trim() || busy()">
+      Split
+    </button>
+  </div>
+
+  <h3>Where to read about it</h3>
+  @if (passages().length === 0) {
+    <p class="quiet">No passages linked yet.</p>
+  }
+  <ul class="passages">
+    @for (passage of passages(); track passage.id) {
+      <li>
+        <div class="place">
+          <strong>{{ passage.sourceTitle }}</strong> {{ where(passage) }}
+        </div>
+        <p>{{ passage.snippet }}</p>
+        <div class="actions">
+          <a [appSourceFile]="passage.sourceId" [at]="fileTarget(passage)">Open</a>
+          <button type="button" (click)="unlinkPassage.emit(passage)" [disabled]="busy()">
+            Unlink
+          </button>
+        </div>
+      </li>
+    }
+  </ul>
+  <div class="row">
+    <button type="button" (click)="findPassages.emit()" [disabled]="busy()">
+      Find passages in my sources
+    </button>
+  </div>
+  @if (suggestions(); as found) {
+    @if (found.length === 0) {
+      <p class="quiet">Nothing found in your sources.</p>
+    }
+    <ul class="passages suggestions">
+      @for (suggestion of found; track $index) {
+        <li>
+          <div class="place">
+            <strong>{{ suggestion.sourceTitle }}</strong> {{ where(suggestion) }}
+          </div>
+          <p>{{ suggestion.snippet }}</p>
+          <div class="actions">
+            <a [appSourceFile]="suggestion.sourceId" [at]="fileTarget(suggestion)">Open</a>
+            @if (suggestion.linked) {
+              <span class="quiet">Linked</span>
+            } @else {
+              <button type="button" (click)="linkPassage.emit(suggestion)" [disabled]="busy()">
+                Link
+              </button>
+            }
+          </div>
+        </li>
+      }
+    </ul>
+  }
+
+  <div class="row danger">
+    <button type="button" (click)="remove.emit()" [disabled]="busy()">Delete concept</button>
+  </div>
+</aside>

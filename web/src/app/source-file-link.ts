@@ -1,5 +1,5 @@
 import { Directive, computed, inject, input } from '@angular/core';
-import { Api } from './api';
+import { SourcesApi } from './api/sources-api';
 import { FileTarget, sourceFileUrl } from './passages';
 
 /**
@@ -16,7 +16,7 @@ import { FileTarget, sourceFileUrl } from './passages';
   },
 })
 export class SourceFileLink {
-  private readonly api = inject(Api);
+  private readonly api = inject(SourcesApi);
 
   /** The source's id. */
   readonly appSourceFile = input.required<string>();

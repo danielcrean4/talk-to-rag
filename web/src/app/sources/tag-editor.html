@@ -1,0 +1,53 @@
+<section id="tag-editor" class="tag-editor" aria-label="Edit tags">
+  <form class="new-notebook" (ngSubmit)="create()">
+    <input
+      name="tagName"
+      [(ngModel)]="newTagName"
+      placeholder="Tag name"
+      aria-label="Tag name"
+      required
+    />
+    <button class="primary" type="submit" [disabled]="!newTagName.trim() || activity.busy() !== ''">
+      Add tag
+    </button>
+    <button type="button" (click)="done.emit()">Done</button>
+  </form>
+  @if (tags().length) {
+    <ul class="tag-list">
+      @for (tag of tags(); track tag.id) {
+        <li>
+          @if (confirmingDelete() === tag.id) {
+            <div class="confirm" role="group" [attr.aria-label]="'Confirm deleting ' + tag.name">
+              <span
+                >Delete the tag {{ tag.name }}? It comes off every source; the sources stay.</span
+              >
+              <button
+                type="button"
+                class="danger"
+                (click)="delete(tag)"
+                [disabled]="activity.busy() !== ''"
+              >
+                Delete
+              </button>
+              <button type="button" (click)="confirmingDelete.set(null)">Cancel</button>
+            </div>
+          } @else {
+            <span class="tag-name">{{ tag.name }}</span>
+            <button
+              type="button"
+              [attr.aria-label]="'Delete tag ' + tag.name"
+              (click)="confirmingDelete.set(tag.id)"
+              [disabled]="activity.busy() !== ''"
+            >
+              Delete
+            </button>
+          }
+        </li>
+      }
+    </ul>
+  } @else {
+    <p class="quiet">
+      No tags yet. Add one, then put it on sources to filter this list and limit searches.
+    </p>
+  }
+</section>

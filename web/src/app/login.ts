@@ -1,7 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { Api, AuthResponse } from './api';
+import { AuthApi, AuthResponse } from './api/auth-api';
 import { Auth, errorMessage } from './auth';
 
 /** The name to register with when none is given: the part of the email before the @. */
@@ -82,7 +82,7 @@ export function defaultDisplayName(email: string): string {
   `,
 })
 export class Login {
-  private readonly api = inject(Api);
+  private readonly api = inject(AuthApi);
   private readonly auth = inject(Auth);
   private readonly router = inject(Router);
 

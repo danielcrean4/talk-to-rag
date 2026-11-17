@@ -1,6 +1,6 @@
 import { HttpEventType } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Api, SearchResponse } from '../api';
+import { SearchApi, SearchResponse } from '../api/search-api';
 import { errorMessage } from '../auth';
 import { latestRequest } from '../latest-request';
 import { SearchScope, SearchSettingsStore, searchRequest } from './search-settings';
@@ -12,7 +12,7 @@ import { SummaryState, readSummary } from './summary-stream';
  */
 @Injectable({ providedIn: 'root' })
 export class SearchSession {
-  private readonly api = inject(Api);
+  private readonly api = inject(SearchApi);
   private readonly settings = inject(SearchSettingsStore);
   private readonly searchRun = latestRequest();
   private readonly summaryRun = latestRequest();

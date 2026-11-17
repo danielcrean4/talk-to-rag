@@ -1,5 +1,5 @@
 import { Component, effect, input, output, signal } from '@angular/core';
-import { Question } from '../api';
+import { Question } from '../api/practice-api';
 import { SourceFileLink } from '../source-file-link';
 import { MARKS, cardSource } from './practice-deck';
 

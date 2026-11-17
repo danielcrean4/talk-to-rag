@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Observable, catchError, of, switchMap, tap } from 'rxjs';
-import { Api } from './api';
+import { AuthApi } from './api/auth-api';
 import { Auth, errorMessage } from './auth';
 
 /**
@@ -11,7 +11,7 @@ import { Auth, errorMessage } from './auth';
  */
 export function startSession(): Observable<unknown> {
   const auth = inject(Auth);
-  const api = inject(Api);
+  const api = inject(AuthApi);
   // Kept before the first navigation, which may change the address, so a retry returns to it.
   const requested = location.href;
   auth.unreachable.set(null);

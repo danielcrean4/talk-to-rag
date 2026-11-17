@@ -1,44 +1,37 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Observable } from 'rxjs';
+import { Activity } from '../activity';
 import {
-  Api,
   Concept,
   ConceptGraph,
   ConceptPassage,
-  DueCards,
-  DueConcept,
+  ConceptsApi,
   PassageSuggestion,
-  Place,
-} from '../api';
-import { errorMessage } from '../auth';
-import { isPagedCitation } from '../history/conversation-turns';
+} from '../api/concepts-api';
+import { DueCards, DueConcept, PracticeApi } from '../api/practice-api';
 import { latestRequest } from '../latest-request';
-import { FileTarget } from '../passages';
-import { SourceFileLink } from '../source-file-link';
-import { dueSummary, masteryDetail } from '../practice/practice-deck';
-import { NODE_HEIGHT, NODE_WIDTH, layoutGraph } from './graph-layout';
+import { dueSummary } from '../practice/practice-deck';
+import { ConceptCanvas } from './concept-canvas';
+import { ConceptPanel, LinkedPrerequisite } from './concept-panel';
+import { layoutGraph } from './graph-layout';
 
 @Component({
   selector: 'app-graph-page',
-  imports: [FormsModule, RouterLink, SourceFileLink],
+  imports: [FormsModule, RouterLink, ConceptCanvas, ConceptPanel],
   templateUrl: './graph-page.html',
   styleUrl: './graph-page.css',
+  providers: [Activity],
 })
 export class GraphPage {
-  private readonly api = inject(Api);
+  private readonly api = inject(ConceptsApi);
+  private readonly activity = inject(Activity);
   private readonly detailsRun = latestRequest();
-
-  readonly nodeWidth = NODE_WIDTH;
-  readonly nodeHeight = NODE_HEIGHT;
-  readonly masteryDetail = masteryDetail;
-  readonly dueSummary = dueSummary;
 
   readonly graph = signal<ConceptGraph>({ concepts: [], prerequisites: [] });
   readonly loaded = signal(false);
-  readonly busy = signal('');
-  readonly error = signal('');
+  readonly busy = this.activity.busy;
+  readonly error = this.activity.error;
   readonly selectedId = signal<string | null>(null);
   readonly passages = signal<ConceptPassage[]>([]);
   readonly suggestions = signal<PassageSuggestion[] | null>(null);
@@ -52,7 +45,7 @@ export class GraphPage {
   readonly selected = computed(
     () => this.graph().concepts.find((concept) => concept.id === this.selectedId()) ?? null,
   );
-  private readonly dueByConcept = computed(
+  readonly dueByConcept = computed(
     () => new Map(this.due()?.concepts.map((item) => [item.conceptId, item]) ?? []),
   );
   readonly reviewText = computed(() => {
@@ -64,7 +57,7 @@ export class GraphPage {
   );
 
   /** What the selected concept builds on, with the state of each link. */
-  readonly selectedPrerequisites = computed(() => {
+  readonly selectedPrerequisites = computed((): LinkedPrerequisite[] => {
     const byId = new Map(this.graph().concepts.map((concept) => [concept.id, concept]));
     return this.graph()
       .prerequisites.filter((link) => link.conceptId === this.selectedId())
@@ -82,14 +75,16 @@ export class GraphPage {
   });
 
   constructor() {
-    this.run('Loading', this.api.graph(), (graph) => {
+    this.activity.run('Loading', this.api.graph(), (graph) => {
       this.graph.set(graph);
       this.loaded.set(true);
     });
-    this.api.due().subscribe({
-      next: (due) => this.due.set(due),
-      error: (error) => this.error.set(errorMessage(error)),
-    });
+    inject(PracticeApi)
+      .due()
+      .subscribe({
+        next: (due) => this.due.set(due),
+        error: (error) => this.activity.fail(error),
+      });
   }
 
   /** How many of the concept's flashcards are due now and how many are new. */
@@ -105,13 +100,8 @@ export class GraphPage {
     this.prerequisiteToAdd = '';
     this.detailsRun.run(this.api.details(concept.id), {
       next: (details) => this.passages.set(details.passages),
-      error: (error) => this.error.set(errorMessage(error)),
+      error: (error) => this.activity.fail(error),
     });
-  }
-
-  isLinkedToSelection(conceptId: string, prerequisiteId: string): boolean {
-    const selected = this.selectedId();
-    return selected !== null && (conceptId === selected || prerequisiteId === selected);
   }
 
   add(): void {
@@ -119,7 +109,7 @@ export class GraphPage {
     if (!name) {
       return;
     }
-    this.run('Adding', this.api.createConcept(name), (concept) => {
+    this.activity.run('Adding', this.api.createConcept(name), (concept) => {
       this.newName = '';
       this.graph.update((graph) => ({ ...graph, concepts: [...graph.concepts, concept] }));
       this.select(concept);
@@ -128,7 +118,7 @@ export class GraphPage {
 
   rename(concept: Concept, name: string): void {
     if (name.trim() && name.trim() !== concept.name) {
-      this.run('Renaming', this.api.updateConcept(concept.id, { name }), (updated) =>
+      this.activity.run('Renaming', this.api.updateConcept(concept.id, { name }), (updated) =>
         this.replace(updated),
       );
     }
@@ -136,7 +126,7 @@ export class GraphPage {
 
   saveSummary(concept: Concept, summary: string): void {
     if (summary.trim() !== (concept.summary ?? '')) {
-      this.run('Saving', this.api.updateConcept(concept.id, { summary }), (updated) =>
+      this.activity.run('Saving', this.api.updateConcept(concept.id, { summary }), (updated) =>
         this.replace(updated),
       );
     }
@@ -146,18 +136,18 @@ export class GraphPage {
     if (!confirm(`Delete "${concept.name}" and its links? This cannot be undone.`)) {
       return;
     }
-    this.run('Deleting', this.api.deleteConcept(concept.id), () => {
+    this.activity.run('Deleting', this.api.deleteConcept(concept.id), () => {
       this.selectedId.set(null);
       this.reload();
     });
   }
 
   accept(concept: Concept): void {
-    this.run('Accepting', this.api.accept(concept.id), (graph) => this.graph.set(graph));
+    this.activity.run('Accepting', this.api.accept(concept.id), (graph) => this.graph.set(graph));
   }
 
   dismiss(concept: Concept): void {
-    this.run('Dismissing', this.api.reject(concept.id), (graph) => {
+    this.activity.run('Dismissing', this.api.reject(concept.id), (graph) => {
       this.graph.set(graph);
       if (this.selectedId() === concept.id) {
         this.selectedId.set(null);
@@ -166,8 +156,10 @@ export class GraphPage {
   }
 
   propose(concept: Concept): void {
-    this.run('Asking the local model', this.api.proposePrerequisites(concept.id), (graph) =>
-      this.graph.set(graph),
+    this.activity.run(
+      'Asking the local model',
+      this.api.proposePrerequisites(concept.id),
+      (graph) => this.graph.set(graph),
     );
   }
 
@@ -179,7 +171,7 @@ export class GraphPage {
     if (names.length === 0) {
       return;
     }
-    this.run('Splitting', this.api.split(concept.id, names), (graph) => {
+    this.activity.run('Splitting', this.api.split(concept.id, names), (graph) => {
       this.graph.set(graph);
       this.splitNames = '';
     });
@@ -189,26 +181,30 @@ export class GraphPage {
     if (!prerequisiteId) {
       return;
     }
-    this.run('Linking', this.api.addPrerequisite(concept.id, prerequisiteId), (graph) => {
+    this.activity.run('Linking', this.api.addPrerequisite(concept.id, prerequisiteId), (graph) => {
       this.graph.set(graph);
       this.prerequisiteToAdd = '';
     });
   }
 
   removePrerequisite(concept: Concept, prerequisiteId: string): void {
-    this.run('Unlinking', this.api.removePrerequisite(concept.id, prerequisiteId), (graph) =>
-      this.graph.set(graph),
+    this.activity.run(
+      'Unlinking',
+      this.api.removePrerequisite(concept.id, prerequisiteId),
+      (graph) => this.graph.set(graph),
     );
   }
 
   findPassages(concept: Concept): void {
-    this.run('Searching your sources', this.api.passageSuggestions(concept.id), (suggestions) =>
-      this.suggestions.set(suggestions),
+    this.activity.run(
+      'Searching your sources',
+      this.api.passageSuggestions(concept.id),
+      (suggestions) => this.suggestions.set(suggestions),
     );
   }
 
   linkPassage(concept: Concept, suggestion: PassageSuggestion): void {
-    this.run('Linking', this.api.addPassage(concept.id, suggestion), (passage) => {
+    this.activity.run('Linking', this.api.addPassage(concept.id, suggestion), (passage) => {
       this.passages.update((passages) => [...passages, passage]);
       this.suggestions.update(
         (all) =>
@@ -219,26 +215,15 @@ export class GraphPage {
   }
 
   unlinkPassage(concept: Concept, passage: ConceptPassage): void {
-    this.run('Unlinking', this.api.removePassage(concept.id, passage.id), () => {
+    this.activity.run('Unlinking', this.api.removePassage(concept.id, passage.id), () => {
       this.passages.update((passages) => passages.filter((item) => item.id !== passage.id));
       this.replace({ ...concept, passageCount: Math.max(0, concept.passageCount - 1) });
       this.suggestions.set(null);
     });
   }
 
-  where(place: Place): string {
-    const page = place.pageLabel ?? String(place.pageNumber);
-    const section = place.section?.split(' > ').slice(-2).join(' › ');
-    return section ? `${section} · p. ${page}` : `p. ${page}`;
-  }
-
-  /** Opens a PDF at the passage's page, and other sources at the passage's first words. */
-  fileTarget(place: Place): FileTarget {
-    return isPagedCitation(place) ? { page: place.pageNumber } : { text: place.snippet };
-  }
-
   private reload(): void {
-    this.run('Loading', this.api.graph(), (graph) => this.graph.set(graph));
+    this.activity.run('Loading', this.api.graph(), (graph) => this.graph.set(graph));
   }
 
   private replace(concept: Concept): void {
@@ -246,20 +231,5 @@ export class GraphPage {
       ...graph,
       concepts: graph.concepts.map((item) => (item.id === concept.id ? concept : item)),
     }));
-  }
-
-  private run<T>(label: string, request: Observable<T>, done: (result: T) => void): void {
-    this.busy.set(label);
-    this.error.set('');
-    request.subscribe({
-      next: (result) => {
-        this.busy.set('');
-        done(result);
-      },
-      error: (error) => {
-        this.busy.set('');
-        this.error.set(errorMessage(error));
-      },
-    });
   }
 }

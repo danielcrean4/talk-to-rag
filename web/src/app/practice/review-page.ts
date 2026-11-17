@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { Api, DueCards, Question } from '../api';
+import { DueCards, PracticeApi, Question } from '../api/practice-api';
 import { errorMessage } from '../auth';
 import { Flashcard } from './flashcard';
 import { FLASHCARDS_PLATFORM, dueSummary, roundSummary } from './practice-deck';
@@ -13,7 +13,7 @@ import { FLASHCARDS_PLATFORM, dueSummary, roundSummary } from './practice-deck';
   styleUrl: './practice-page.css',
 })
 export class ReviewPage {
-  private readonly api = inject(Api);
+  private readonly api = inject(PracticeApi);
 
   protected readonly due = signal<DueCards | null>(null);
   protected readonly index = signal(0);

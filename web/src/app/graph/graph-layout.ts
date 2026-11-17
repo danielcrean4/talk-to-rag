@@ -1,4 +1,4 @@
-import { Concept, Prerequisite } from '../api';
+import { Concept, Prerequisite } from '../api/concepts-api';
 
 export const NODE_WIDTH = 164;
 export const NODE_HEIGHT = 56;

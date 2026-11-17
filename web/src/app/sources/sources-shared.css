@@ -1,0 +1,54 @@
+/* Styles the Sources page shares with its child components. */
+
+.pill {
+  border-radius: 999px;
+  padding: 0.3rem 0.8rem;
+}
+.pill.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+  font-weight: 600;
+}
+.pill.new {
+  color: var(--muted);
+  border-style: dashed;
+}
+.count {
+  color: var(--muted);
+  font-size: 0.75rem;
+  margin-left: 0.15rem;
+}
+
+.new-notebook {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.new-notebook input {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+}
+.confirm span {
+  flex: 1 1 14rem;
+  color: var(--danger);
+}
+button.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+  font-weight: 600;
+}
+@media (prefers-color-scheme: dark) {
+  button.danger {
+    color: #0d1320;
+  }
+}

@@ -1,4 +1,4 @@
-import { Message, MessageCitation } from '../api';
+import { Message, MessageCitation } from '../api/conversations-api';
 import { locationLabel } from '../passages';
 
 export interface CitationView {

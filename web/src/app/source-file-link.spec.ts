@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Subject } from 'rxjs';
-import { Api, SourceFileLinkResponse } from './api';
+import { SourceFileLinkResponse, SourcesApi } from './api/sources-api';
 import { SourceFileLink } from './source-file-link';
 
 @Component({
@@ -30,7 +30,7 @@ describe('SourceFileLink', () => {
     TestBed.configureTestingModule({
       providers: [
         {
-          provide: Api,
+          provide: SourcesApi,
           useValue: {
             sourceFileLink: (id: string) => {
               asked.push(id);
