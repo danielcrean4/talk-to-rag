@@ -7,5 +7,6 @@ public interface IUserRepository
 {
     Task<User?> FindByIdAsync(Guid id, CancellationToken cancellationToken);
     Task<User?> FindByEmailAsync(string email, CancellationToken cancellationToken);
-    Task AddAsync(User user, CancellationToken cancellationToken);
+    /// <summary>Adds the user, or returns false when another user already has that email.</summary>
+    Task<bool> TryAddAsync(User user, CancellationToken cancellationToken);
 }

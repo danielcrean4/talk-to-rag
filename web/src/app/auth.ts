@@ -17,6 +17,9 @@ export class Auth {
   /** Set at startup when the API runs without accounts. */
   singleUser = false;
 
+  /** Why the API could not be asked at startup, and the address asked for; while set, the app shows this in place of every screen. */
+  readonly unreachable = signal<{ reason: string; url: string } | null>(null);
+
   signIn(token: string, user: User | null = null): void {
     localStorage.setItem(STORAGE_KEY, token);
     this.token.set(token);
@@ -29,15 +32,25 @@ export class Auth {
       location.reload();
       return;
     }
+    this.forget();
+    this.router.navigate(['/login']);
+  }
+
+  /** Drops the kept token, as when the API no longer accepts it. */
+  forget(): void {
     localStorage.removeItem(STORAGE_KEY);
     this.token.set(null);
     this.user.set(null);
-    this.router.navigate(['/login']);
   }
 }
 
-export const signedInGuard: CanActivateFn = () =>
-  inject(Auth).signedIn() || inject(Router).createUrlTree(['/login']);
+export const signedInGuard: CanActivateFn = () => {
+  const auth = inject(Auth);
+  if (auth.unreachable()) {
+    return false;
+  }
+  return auth.signedIn() || inject(Router).createUrlTree(['/login']);
+};
 
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const auth = inject(Auth);

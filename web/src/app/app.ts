@@ -10,4 +10,9 @@ import { Auth } from './auth';
 })
 export class App {
   protected readonly auth = inject(Auth);
+
+  /** Loads the address first asked for again, which asks the API from the start. */
+  protected retry(url: string): void {
+    location.assign(url);
+  }
 }

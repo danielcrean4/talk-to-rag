@@ -16,7 +16,12 @@ public sealed class AuthService(
     IOptions<AuthOptions> options) : IAuthService
 {
     public const int MinimumPasswordLength = 8;
+    // Each hash costs CPU for a password length the caller chooses, so the length is capped.
+    public const int MaximumPasswordLength = 128;
     public const string LocalUserEmail = "local@talk-to-rag.local";
+
+    private static readonly User NobodyUser = new() { Email = "", DisplayName = "", PasswordHash = "" };
+    private static string? _unknownUserHash;
 
     public async Task<SessionResponse> GetSessionAsync(CancellationToken cancellationToken)
     {
@@ -35,7 +40,10 @@ public sealed class AuthService(
                 PasswordHash = "",
                 CreatedAtUtc = clock.GetUtcNow(),
             };
-            await users.AddAsync(user, cancellationToken);
+            // Two first page loads at once both get here; the one that loses uses the user the other added.
+            if (!await users.TryAddAsync(user, cancellationToken))
+                user = await users.FindByEmailAsync(LocalUserEmail, cancellationToken)
+                    ?? throw new InvalidOperationException("The local user was added by another request but cannot be read.");
         }
 
         return new SessionResponse(true, Respond(user));
@@ -51,6 +59,8 @@ public sealed class AuthService(
             throw new RequestValidationException("Enter a display name.");
         if ((request.Password ?? "").Length < MinimumPasswordLength)
             throw new RequestValidationException($"Use a password of at least {MinimumPasswordLength} characters.");
+        if (request.Password!.Length > MaximumPasswordLength)
+            throw new RequestValidationException($"Use a password of at most {MaximumPasswordLength} characters.");
         if (await users.FindByEmailAsync(email, cancellationToken) is not null)
             throw new ConflictException("An account with that email already exists.");
 
@@ -64,7 +74,8 @@ public sealed class AuthService(
         };
         // Stores a salted, slow hash (PBKDF2), never the password itself.
         user.PasswordHash = passwordHasher.HashPassword(user, request.Password!);
-        await users.AddAsync(user, cancellationToken);
+        if (!await users.TryAddAsync(user, cancellationToken))
+            throw new ConflictException("An account with that email already exists.");
 
         return Respond(user);
     }
@@ -72,11 +83,20 @@ public sealed class AuthService(
     public async Task<AuthResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken)
     {
         RequireAccounts();
-        var user = await users.FindByEmailAsync(NormalizeEmail(request.Email), cancellationToken);
-        if (user is null)
+        var password = request.Password ?? "";
+        if (password.Length > MaximumPasswordLength)
             throw new AuthenticationFailedException();
 
-        var result = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password ?? "");
+        var user = await users.FindByEmailAsync(NormalizeEmail(request.Email), cancellationToken);
+        if (user is null)
+        {
+            // Hashing anyway makes an unknown email take as long to refuse as a wrong password.
+            _unknownUserHash ??= passwordHasher.HashPassword(NobodyUser, "no account has this password");
+            passwordHasher.VerifyHashedPassword(NobodyUser, _unknownUserHash, password);
+            throw new AuthenticationFailedException();
+        }
+
+        var result = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, password);
         if (result == PasswordVerificationResult.Failed)
             throw new AuthenticationFailedException();
 
