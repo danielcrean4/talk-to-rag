@@ -2,7 +2,8 @@ import { provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Subject, of } from 'rxjs';
-import { Api, Concept, ConceptDetails, ConceptPassage } from '../api';
+import { Concept, ConceptDetails, ConceptPassage, ConceptsApi } from '../api/concepts-api';
+import { PracticeApi } from '../api/practice-api';
 import { GraphPage } from './graph-page';
 
 const concept = (id: string): Concept => ({
@@ -35,10 +36,13 @@ describe('GraphPage', () => {
         provideRouter([]),
         provideHttpClient(),
         {
-          provide: Api,
+          provide: PracticeApi,
+          useValue: { due: () => of({ questions: [], dueCount: 0, newCount: 0, concepts: [] }) },
+        },
+        {
+          provide: ConceptsApi,
           useValue: {
             graph: () => of({ concepts: [concept('a'), concept('b')], prerequisites: [] }),
-            due: () => of({ questions: [], dueCount: 0, newCount: 0, concepts: [] }),
             details: (id: string) => {
               details.set(id, new Subject());
               return details.get(id);

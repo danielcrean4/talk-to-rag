@@ -34,237 +34,39 @@
         <p>Add something you want to understand, then ask the model what it builds on.</p>
       </div>
     } @else {
-      <div class="graph" [style.width.px]="layout().width" [style.height.px]="layout().height">
-        <svg [attr.width]="layout().width" [attr.height]="layout().height" aria-hidden="true">
-          @for (item of layout().links; track item.link.conceptId + item.link.prerequisiteId) {
-            <path
-              [attr.d]="item.path"
-              [class.proposed]="item.link.state === 'Proposed'"
-              [class.active]="isLinkedToSelection(item.link.conceptId, item.link.prerequisiteId)"
-            />
-          }
-        </svg>
-        @for (node of layout().nodes; track node.concept.id) {
-          <button
-            type="button"
-            class="node"
-            [class.proposed]="node.concept.state === 'Proposed'"
-            [class.selected]="node.concept.id === selectedId()"
-            [style.left.px]="node.x"
-            [style.top.px]="node.y"
-            [style.width.px]="nodeWidth"
-            [style.height.px]="nodeHeight"
-            [attr.aria-pressed]="node.concept.id === selectedId()"
-            (click)="select(node.concept)"
-          >
-            <span class="name">{{ node.concept.name }}</span>
-            @if (node.concept.state === 'Proposed') {
-              <span class="meta">suggested</span>
-            } @else {
-              <span class="meta">
-                <span class="mastery" [attr.data-level]="node.concept.mastery.level">{{
-                  node.concept.mastery.level
-                }}</span>
-                @if (node.concept.passageCount) {
-                  · {{ node.concept.passageCount }} linked
-                }
-                @if (dueFor(node.concept.id).due; as due) {
-                  · <span class="due">{{ due }} due</span>
-                }
-              </span>
-            }
-          </button>
-        }
-      </div>
-      <p class="hint">Foundations sit at the bottom; each concept builds on the ones below it.</p>
+      <app-concept-canvas
+        [layout]="layout()"
+        [selectedId]="selectedId()"
+        [due]="dueByConcept()"
+        (pick)="select($event)"
+      />
     }
   </div>
 
   @if (selected(); as concept) {
-    <aside class="panel" aria-label="Concept details">
-      <input
-        class="title"
-        #nameInput
-        [value]="concept.name"
-        (change)="rename(concept, nameInput.value)"
-        aria-label="Concept name"
-      />
-      <textarea
-        #summaryInput
-        rows="2"
-        [value]="concept.summary ?? ''"
-        placeholder="What is it, in a sentence?"
-        aria-label="Summary"
-        (change)="saveSummary(concept, summaryInput.value)"
-      ></textarea>
-
-      @if (concept.state === 'Proposed') {
-        <div class="proposal">
-          <span>Suggested by the model.</span>
-          <button
-            class="primary"
-            type="button"
-            (click)="accept(concept)"
-            [disabled]="busy() !== ''"
-          >
-            Keep
-          </button>
-          <button type="button" (click)="dismiss(concept)" [disabled]="busy() !== ''">
-            Dismiss
-          </button>
-        </div>
-      }
-
-      <h3>Practice</h3>
-      <div class="row practice">
-        <span class="badge mastery" [attr.data-level]="concept.mastery.level">{{
-          concept.mastery.level
-        }}</span>
-        <span class="quiet">{{ masteryDetail(concept.mastery) }}</span>
-      </div>
-      <div class="row">
-        <a class="button" [routerLink]="['/concepts', concept.id, 'practice']">Flashcards</a>
-        @let cards = dueFor(concept.id);
-        @if (cards.due || cards.new) {
-          <span class="quiet">{{ dueSummary(cards.due, cards.new) }}</span>
-        }
-      </div>
-
-      <h3>Builds on</h3>
-      @if (selectedPrerequisites().length === 0) {
-        <p class="quiet">No prerequisites yet.</p>
-      }
-      <ul class="links">
-        @for (item of selectedPrerequisites(); track item.concept.id) {
-          <li [class.proposed]="item.link.state === 'Proposed'">
-            <button type="button" class="link-name" (click)="select(item.concept)">
-              {{ item.concept.name }}
-            </button>
-            @if (item.link.state === 'Proposed' && item.concept.state === 'Accepted') {
-              <button
-                type="button"
-                (click)="addPrerequisite(concept, item.concept.id)"
-                [disabled]="busy() !== ''"
-              >
-                Keep link
-              </button>
-            }
-            <button
-              type="button"
-              class="icon"
-              [attr.aria-label]="'Remove link to ' + item.concept.name"
-              (click)="removePrerequisite(concept, item.concept.id)"
-              [disabled]="busy() !== ''"
-            >
-              ×
-            </button>
-          </li>
-        }
-      </ul>
-      <div class="row">
-        <button type="button" (click)="propose(concept)" [disabled]="busy() !== ''">
-          Suggest prerequisites
-        </button>
-      </div>
-      @if (linkable().length) {
-        <div class="row">
-          <select
-            [(ngModel)]="prerequisiteToAdd"
-            aria-label="Existing concept to link as a prerequisite"
-          >
-            <option value="">Link an existing concept…</option>
-            @for (option of linkable(); track option.id) {
-              <option [value]="option.id">{{ option.name }}</option>
-            }
-          </select>
-          <button
-            type="button"
-            (click)="addPrerequisite(concept, prerequisiteToAdd)"
-            [disabled]="!prerequisiteToAdd || busy() !== ''"
-          >
-            Link
-          </button>
-        </div>
-      }
-      <div class="row">
-        <input
-          [(ngModel)]="splitNames"
-          placeholder="Split into: limits, derivatives"
-          aria-label="Names to split this concept into, separated by commas"
-        />
-        <button
-          type="button"
-          (click)="split(concept)"
-          [disabled]="!splitNames.trim() || busy() !== ''"
-        >
-          Split
-        </button>
-      </div>
-
-      <h3>Where to read about it</h3>
-      @if (passages().length === 0) {
-        <p class="quiet">No passages linked yet.</p>
-      }
-      <ul class="passages">
-        @for (passage of passages(); track passage.id) {
-          <li>
-            <div class="place">
-              <strong>{{ passage.sourceTitle }}</strong> {{ where(passage) }}
-            </div>
-            <p>{{ passage.snippet }}</p>
-            <div class="actions">
-              <a [appSourceFile]="passage.sourceId" [at]="fileTarget(passage)">Open</a>
-              <button
-                type="button"
-                (click)="unlinkPassage(concept, passage)"
-                [disabled]="busy() !== ''"
-              >
-                Unlink
-              </button>
-            </div>
-          </li>
-        }
-      </ul>
-      <div class="row">
-        <button type="button" (click)="findPassages(concept)" [disabled]="busy() !== ''">
-          Find passages in my sources
-        </button>
-      </div>
-      @if (suggestions(); as found) {
-        @if (found.length === 0) {
-          <p class="quiet">Nothing found in your sources.</p>
-        }
-        <ul class="passages suggestions">
-          @for (suggestion of found; track $index) {
-            <li>
-              <div class="place">
-                <strong>{{ suggestion.sourceTitle }}</strong> {{ where(suggestion) }}
-              </div>
-              <p>{{ suggestion.snippet }}</p>
-              <div class="actions">
-                <a [appSourceFile]="suggestion.sourceId" [at]="fileTarget(suggestion)">Open</a>
-                @if (suggestion.linked) {
-                  <span class="quiet">Linked</span>
-                } @else {
-                  <button
-                    type="button"
-                    (click)="linkPassage(concept, suggestion)"
-                    [disabled]="busy() !== ''"
-                  >
-                    Link
-                  </button>
-                }
-              </div>
-            </li>
-          }
-        </ul>
-      }
-
-      <div class="row danger">
-        <button type="button" (click)="remove(concept)" [disabled]="busy() !== ''">
-          Delete concept
-        </button>
-      </div>
-    </aside>
+    <app-concept-panel
+      [concept]="concept"
+      [prerequisites]="selectedPrerequisites()"
+      [linkable]="linkable()"
+      [passages]="passages()"
+      [suggestions]="suggestions()"
+      [cards]="dueFor(concept.id)"
+      [busy]="busy() !== ''"
+      [(splitNames)]="splitNames"
+      [(prerequisiteToAdd)]="prerequisiteToAdd"
+      (rename)="rename(concept, $event)"
+      (saveSummary)="saveSummary(concept, $event)"
+      (accept)="accept(concept)"
+      (dismiss)="dismiss(concept)"
+      (open)="select($event)"
+      (addPrerequisite)="addPrerequisite(concept, $event)"
+      (removePrerequisite)="removePrerequisite(concept, $event)"
+      (propose)="propose(concept)"
+      (split)="split(concept)"
+      (findPassages)="findPassages(concept)"
+      (linkPassage)="linkPassage(concept, $event)"
+      (unlinkPassage)="unlinkPassage(concept, $event)"
+      (remove)="remove(concept)"
+    />
   }
 </div>

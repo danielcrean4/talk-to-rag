@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Api, Notebook, Tag } from '../api';
+import { Notebook, NotebooksApi } from '../api/notebooks-api';
+import { Tag, TagsApi } from '../api/tags-api';
 import { AnswerText } from '../answer-text';
 import { ReadAloud } from '../read-aloud';
 import { knownTagIds, toggleId } from '../tags';
@@ -17,7 +18,8 @@ import { SettingsPanel } from './settings-panel';
   styleUrl: './search-page.css',
 })
 export class SearchPage {
-  private readonly api = inject(Api);
+  private readonly notebooksApi = inject(NotebooksApi);
+  private readonly tagsApi = inject(TagsApi);
   private readonly settings = inject(SearchSettingsStore);
   protected readonly session = inject(SearchSession);
 
@@ -37,8 +39,8 @@ export class SearchPage {
   );
 
   constructor() {
-    this.api.notebooks().subscribe({ next: (notebooks) => this.notebooks.set(notebooks) });
-    this.api.tags().subscribe({ next: (tags) => this.tags.set(tags) });
+    this.notebooksApi.notebooks().subscribe({ next: (notebooks) => this.notebooks.set(notebooks) });
+    this.tagsApi.tags().subscribe({ next: (tags) => this.tags.set(tags) });
   }
 
   toggleTag(tagId: string): void {

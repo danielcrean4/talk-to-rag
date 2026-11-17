@@ -1,6 +1,6 @@
 import { Component, inject, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { SearchMode } from '../api';
+import { SearchMode } from '../api/search-api';
 import { SearchSettingsStore } from './search-settings';
 
 /** Retrieval settings, kept in this browser and sent with every search. */

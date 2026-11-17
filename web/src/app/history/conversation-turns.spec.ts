@@ -1,4 +1,4 @@
-import { Message, MessageCitation } from '../api';
+import { Message, MessageCitation } from '../api/conversations-api';
 import { conversationTurns, isPagedCitation } from './conversation-turns';
 
 const citation = (

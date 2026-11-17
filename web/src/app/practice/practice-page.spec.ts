@@ -2,7 +2,8 @@ import { provideHttpClient } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Subject } from 'rxjs';
-import { Api, AttemptResult, Concept, ConceptDetails, Question } from '../api';
+import { Concept, ConceptDetails, ConceptsApi } from '../api/concepts-api';
+import { AttemptResult, PracticeApi, Question } from '../api/practice-api';
 import { PracticePage } from './practice-page';
 
 const concept = (id: string): Concept => ({
@@ -57,12 +58,17 @@ describe('PracticePage', () => {
         provideRouter([]),
         provideHttpClient(),
         {
-          provide: Api,
+          provide: ConceptsApi,
           useValue: {
             details: (id: string) => {
               details.set(id, new Subject());
               return details.get(id);
             },
+          },
+        },
+        {
+          provide: PracticeApi,
+          useValue: {
             questions: (id: string) => {
               questions.set(id, new Subject());
               return questions.get(id);

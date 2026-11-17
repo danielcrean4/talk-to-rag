@@ -1,4 +1,5 @@
-import { Mastery, Question } from '../api';
+import { Mastery } from '../api/concepts-api';
+import { Question } from '../api/practice-api';
 import {
   MARKS,
   answered,

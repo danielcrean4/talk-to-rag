@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { SearchMode, SearchRequest } from '../api';
+import { SearchMode, SearchRequest } from '../api/search-api';
 
 export interface SearchSettings {
   mode: SearchMode;

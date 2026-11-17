@@ -1,7 +1,12 @@
 import { DatePipe } from '@angular/common';
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { Api, ConversationDetails, ConversationSummary, Source } from '../api';
+import {
+  ConversationDetails,
+  ConversationSummary,
+  ConversationsApi,
+} from '../api/conversations-api';
+import { Source, SourcesApi } from '../api/sources-api';
 import { AnswerText } from '../answer-text';
 import { errorMessage } from '../auth';
 import { latestRequest } from '../latest-request';
@@ -17,7 +22,8 @@ import { CitationView, conversationTurns } from './conversation-turns';
   styleUrl: './history-page.css',
 })
 export class HistoryPage {
-  private readonly api = inject(Api);
+  private readonly sourcesApi = inject(SourcesApi);
+  private readonly conversationsApi = inject(ConversationsApi);
   private readonly conversationRun = latestRequest();
 
   /** Bound from the `history/:id` route. */
@@ -42,12 +48,12 @@ export class HistoryPage {
 
   constructor() {
     this.refresh();
-    this.api.sources().subscribe({ next: (sources) => this.sources.set(sources) });
+    this.sourcesApi.sources().subscribe({ next: (sources) => this.sources.set(sources) });
     effect(() => this.open(this.id()));
   }
 
   refresh(): void {
-    this.api.conversations().subscribe({
+    this.conversationsApi.conversations().subscribe({
       next: (conversations) => {
         this.conversations.set(conversations);
         this.listLoaded.set(true);
@@ -93,7 +99,7 @@ export class HistoryPage {
     }
     this.loading.set(true);
     this.error.set('');
-    this.conversationRun.run(this.api.conversation(id), {
+    this.conversationRun.run(this.conversationsApi.conversation(id), {
       next: (conversation) => {
         this.conversation.set(conversation);
         this.loading.set(false);

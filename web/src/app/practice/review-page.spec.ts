@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Subject, of } from 'rxjs';
-import { Api, AttemptResult, DueCards, Question } from '../api';
+import { AttemptResult, DueCards, PracticeApi, Question } from '../api/practice-api';
 import { ReviewPage } from './review-page';
 
 const question = (id: string): Question => ({
@@ -38,7 +38,7 @@ describe('ReviewPage', () => {
         provideRouter([]),
         provideHttpClient(),
         {
-          provide: Api,
+          provide: PracticeApi,
           useValue: {
             due: () => of(due),
             recordAttempt: (questionId: string) => {

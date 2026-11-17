@@ -2,7 +2,8 @@ import { provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Subject, of } from 'rxjs';
-import { Api, ConversationDetails } from '../api';
+import { ConversationDetails, ConversationsApi } from '../api/conversations-api';
+import { SourcesApi } from '../api/sources-api';
 import { HistoryPage } from './history-page';
 
 const conversation = (id: string): ConversationDetails => ({
@@ -23,16 +24,16 @@ describe('HistoryPage', () => {
         provideRouter([]),
         provideHttpClient(),
         {
-          provide: Api,
+          provide: ConversationsApi,
           useValue: {
             conversations: () => of([]),
-            sources: () => of([]),
             conversation: (id: string) => {
               responses.set(id, new Subject());
               return responses.get(id);
             },
           },
         },
+        { provide: SourcesApi, useValue: { sources: () => of([]) } },
       ],
     });
   });

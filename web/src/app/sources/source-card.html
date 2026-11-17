@@ -1,0 +1,135 @@
+@let source = this.source();
+<div class="head">
+  <a class="title" [appSourceFile]="source.id" [title]="'Open ' + source.fileName">{{
+    source.title
+  }}</a>
+  <span class="status-badge" [class]="source.status.toLowerCase()">{{ source.status }}</span>
+</div>
+<div class="meta">
+  <span>{{ source.fileName }}</span>
+  <span>{{ formatBytes(source.sizeBytes) }}</span>
+  @if (source.status === 'Ready') {
+    <span>{{ source.chunkCount }} {{ source.chunkCount === 1 ? 'chunk' : 'chunks' }}</span>
+  }
+  <span>{{ source.createdAtUtc | date: 'MMM d, HH:mm' }}</span>
+  @if (matched()) {
+    <span class="badge">in last search</span>
+  }
+</div>
+@let origin = safeHttpUrl(source.sourceUrl);
+@if (source.license || origin) {
+  <div class="meta provenance">
+    @if (source.license) {
+      <span>License: {{ source.license }}</span>
+    }
+    @if (origin) {
+      <span
+        >From
+        <a [href]="origin" target="_blank" rel="noopener noreferrer" [title]="origin">{{
+          originHost(origin)
+        }}</a></span
+      >
+    }
+  </div>
+}
+@let sourceTags = tagsOn(source, tags());
+@if (sourceTags.length) {
+  <ul class="tags" aria-label="Tags">
+    @for (tag of sourceTags; track tag.id) {
+      <li class="tag">
+        {{ tag.name }}
+        <button
+          type="button"
+          class="remove"
+          [attr.aria-label]="'Remove tag ' + tag.name + ' from ' + source.title"
+          (click)="untag.emit(tag)"
+          [disabled]="busy()"
+        >
+          ×
+        </button>
+      </li>
+    }
+  </ul>
+}
+@if (failureNotice(source); as notice) {
+  <p class="failure">{{ notice }}</p>
+}
+@if (editing()) {
+  <form class="details" [attr.aria-label]="'Details of ' + source.title" (ngSubmit)="save()">
+    <label>
+      <span>License</span>
+      <input
+        name="license"
+        [(ngModel)]="draftLicense"
+        maxlength="200"
+        placeholder="e.g. CC BY 4.0 or Public domain"
+      />
+    </label>
+    <label>
+      <span>Origin</span>
+      <input
+        name="sourceUrl"
+        type="url"
+        [(ngModel)]="draftSourceUrl"
+        maxlength="2000"
+        placeholder="https://…"
+      />
+    </label>
+    <div class="details-actions">
+      <button class="primary" type="submit" [disabled]="busy()">Save</button>
+      <button type="button" (click)="editingChange.emit(false)">Cancel</button>
+    </div>
+  </form>
+}
+@if (confirmingDelete()) {
+  <div class="confirm" role="group" aria-label="Confirm delete">
+    <span
+      >Delete {{ source.title }}? Its file, passages and the citations that point at it go
+      too.</span
+    >
+    <button type="button" class="danger" (click)="remove.emit()" [disabled]="busy()">Delete</button>
+    <button type="button" (click)="confirmingDeleteChange.emit(false)">Cancel</button>
+  </div>
+}
+<div class="actions">
+  @if (reprocessLabel(source); as label) {
+    <button type="button" (click)="reprocess.emit()" [disabled]="busy()">
+      {{ label }}
+    </button>
+  }
+  @if (!editing()) {
+    <button
+      type="button"
+      [attr.aria-label]="'Edit license and origin of ' + source.title"
+      (click)="editDetails()"
+    >
+      Edit details
+    </button>
+  }
+  @if (!confirmingDelete()) {
+    <button type="button" (click)="confirmingDeleteChange.emit(true)" [disabled]="busy()">
+      Delete
+    </button>
+  }
+  @if (notebooks().length) {
+    <select
+      #notebookPick
+      aria-label="Add to a notebook"
+      (change)="addToNotebook.emit(notebookPick.value); notebookPick.value = ''"
+    >
+      <option value="">Add to notebook…</option>
+      @for (notebook of notebooks(); track notebook.id) {
+        <option [value]="notebook.id">{{ notebook.name }}</option>
+      }
+    </select>
+  }
+  @let addable = tagsOff(source, tags());
+  @if (addable.length) {
+    <select #tagPick aria-label="Add a tag" (change)="tag.emit(tagPick.value); tagPick.value = ''">
+      <option value="">Add a tag…</option>
+      @for (tag of addable; track tag.id) {
+        <option [value]="tag.id">{{ tag.name }}</option>
+      }
+    </select>
+  }
+</div>

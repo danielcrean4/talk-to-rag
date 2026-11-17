@@ -1,4 +1,4 @@
-import { Source, SourceStatus } from '../api';
+import { Source, SourceStatus } from '../api/sources-api';
 import {
   anyWorking,
   failureNotice,

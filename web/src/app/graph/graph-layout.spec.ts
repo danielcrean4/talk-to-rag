@@ -1,4 +1,4 @@
-import { Concept, Prerequisite } from '../api';
+import { Concept, Prerequisite } from '../api/concepts-api';
 import { NODE_HEIGHT, layoutGraph } from './graph-layout';
 
 const concept = (id: string): Concept => ({

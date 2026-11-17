@@ -1,0 +1,37 @@
+<div class="notebooks" role="group" aria-label="Notebooks" [class.drop-ready]="dragging()">
+  <button
+    type="button"
+    class="pill"
+    [class.active]="!selectedId()"
+    [attr.aria-pressed]="!selectedId()"
+    (click)="show.emit(null)"
+  >
+    All sources
+  </button>
+  @for (notebook of notebooks(); track notebook.id) {
+    <button
+      type="button"
+      class="pill"
+      [class.active]="selectedId() === notebook.id"
+      [class.drop-target]="dropTarget() === notebook.id"
+      [attr.aria-pressed]="selectedId() === notebook.id"
+      (click)="show.emit(notebook.id)"
+      (dragover)="dragOver($event, notebook)"
+      (dragleave)="dropTarget.set(null)"
+      (drop)="drop($event, notebook)"
+    >
+      {{ notebook.name }} <span class="count">{{ notebook.sourceCount }}</span>
+    </button>
+  }
+  @if (!creating()) {
+    <button type="button" class="pill new" (click)="newNotebook.emit()">New notebook</button>
+  }
+</div>
+<p class="status" aria-live="polite">
+  @if (activity.busy()) {
+    {{ activity.busy() }}…
+  } @else if (dragging() && notebooks().length) {
+    Drop on a notebook to add the source to it
+  }
+</p>
+<button type="button" class="refresh" (click)="refresh.emit()">Refresh</button>

@@ -1,4 +1,7 @@
-import { Source } from '../api';
+import { Source } from '../api/sources-api';
+
+/** The drag data type that carries a source's id from its card to a notebook. */
+export const SOURCE_DRAG_TYPE = 'application/x-talk-to-rag-source';
 
 export function formatBytes(bytes: number): string {
   if (bytes <= 0) {

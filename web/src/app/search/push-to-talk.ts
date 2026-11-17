@@ -1,5 +1,5 @@
 import { Component, OnDestroy, inject, output, signal } from '@angular/core';
-import { Api } from '../api';
+import { SpeechApi } from '../api/speech-api';
 import { errorMessage } from '../auth';
 
 const RECORDING_TYPES = ['audio/webm', 'audio/mp4', 'audio/ogg'];
@@ -60,7 +60,7 @@ const PREVIEW_INTERVAL_MS = 700;
   `,
 })
 export class PushToTalk implements OnDestroy {
-  private readonly api = inject(Api);
+  private readonly api = inject(SpeechApi);
   private recorder: MediaRecorder | null = null;
   private released = false;
   private destroyed = false;

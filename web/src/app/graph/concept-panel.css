@@ -1,0 +1,134 @@
+:host {
+  display: contents;
+}
+
+.panel {
+  flex: 0 0 22rem;
+  max-width: 100%;
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.panel > * {
+  flex-shrink: 0;
+}
+.panel .title {
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+.panel h3 {
+  margin: 0.75rem 0 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.panel ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+.quiet {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  margin: 0.5rem 0;
+}
+.row {
+  display: flex;
+  gap: 0.5rem;
+}
+.row input,
+.row select {
+  flex: 1;
+  min-width: 0;
+}
+.practice {
+  align-items: center;
+}
+a.button {
+  display: inline-block;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: var(--text);
+  text-decoration: none;
+}
+a.button:hover {
+  border-color: var(--accent);
+}
+.proposal {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px dashed var(--line-strong);
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+.proposal span {
+  flex: 1;
+}
+
+.links li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.links li.proposed .link-name {
+  border-style: dashed;
+  color: var(--muted);
+}
+.link-name {
+  flex: 1;
+  text-align: left;
+}
+.icon {
+  padding: 0.25rem 0.55rem;
+}
+
+.passages li {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.6rem 0.7rem;
+  font-size: 0.8125rem;
+}
+.passages p {
+  margin: 0.35rem 0 0.5rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.place {
+  overflow-wrap: anywhere;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.actions a {
+  color: var(--accent);
+}
+.suggestions li {
+  border-style: dashed;
+}
+.danger {
+  margin-top: 1rem;
+  justify-content: flex-end;
+}
+.danger button {
+  color: var(--danger);
+}
+
+@media (max-width: 760px) {
+  .panel {
+    flex-basis: auto;
+  }
+}
