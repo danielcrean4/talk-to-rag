@@ -67,8 +67,29 @@ a.button:hover {
   font-size: 1.125rem;
 }
 
+.narrow {
+  display: none;
+}
+
 @media (max-width: 760px) {
   .workspace {
     flex-direction: column;
+  }
+}
+
+/* Too narrow for the graph: the same concepts as a list by depth, and the page scrolls as a whole. */
+@media (max-width: 640px) {
+  :host,
+  .workspace {
+    flex: none;
+  }
+  .canvas {
+    overflow: visible;
+  }
+  .wide {
+    display: none;
+  }
+  .narrow {
+    display: grid;
   }
 }

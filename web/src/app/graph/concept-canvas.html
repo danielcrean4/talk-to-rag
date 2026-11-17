@@ -12,32 +12,15 @@
     <button
       type="button"
       class="node"
-      [class.proposed]="node.concept.state === 'Proposed'"
-      [class.selected]="node.concept.id === selectedId()"
+      [appConceptTile]="node.concept"
+      [selected]="node.concept.id === selectedId()"
+      [due]="due().get(node.concept.id)?.due ?? 0"
       [style.left.px]="node.x"
       [style.top.px]="node.y"
       [style.width.px]="nodeWidth"
       [style.height.px]="nodeHeight"
-      [attr.aria-pressed]="node.concept.id === selectedId()"
       (click)="pick.emit(node.concept)"
-    >
-      <span class="name">{{ node.concept.name }}</span>
-      @if (node.concept.state === 'Proposed') {
-        <span class="meta">suggested</span>
-      } @else {
-        <span class="meta">
-          <span class="mastery" [attr.data-level]="node.concept.mastery.level">{{
-            node.concept.mastery.level
-          }}</span>
-          @if (node.concept.passageCount) {
-            · {{ node.concept.passageCount }} linked
-          }
-          @if (due().get(node.concept.id)?.due; as due) {
-            · <span class="due">{{ due }} due</span>
-          }
-        </span>
-      }
-    </button>
+    ></button>
   }
 </div>
 <p class="hint">Foundations sit at the bottom; each concept builds on the ones below it.</p>
