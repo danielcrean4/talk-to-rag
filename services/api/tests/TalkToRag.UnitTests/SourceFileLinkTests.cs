@@ -118,6 +118,8 @@ public sealed class SourceFileLinkTests : IClassFixture<SourceFileLinkTests.App>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            // Not Development, which loads the build's static web assets manifest and fails when it names a missing wwwroot.
+            builder.UseEnvironment("Testing");
             builder.UseSetting("ConnectionStrings:TalkToRag", "Host=127.0.0.1;Database=unused");
             builder.UseSetting("Jwt:SigningKey", "test-signing-key-that-is-at-least-32-bytes");
             builder.ConfigureTestServices(services =>
