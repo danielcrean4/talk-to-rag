@@ -10,9 +10,10 @@ public class AuthServiceTests
 {
     private readonly InMemoryUsers _users = new();
     private readonly StubCurrentUser _currentUser = new();
+    private readonly CountingHasher _hasher = new();
 
     private AuthService CreateService(bool singleUser = false) =>
-        new(_users, new PasswordHasher<User>(), new StubTokens(), _currentUser, new FixedClock(),
+        new(_users, _hasher, new StubTokens(), _currentUser, new FixedClock(),
             Microsoft.Extensions.Options.Options.Create(new AuthOptions { SingleUser = singleUser }));
 
     [Fact]
@@ -38,6 +39,18 @@ public class AuthServiceTests
         Assert.True(first.SingleUser);
         Assert.Equal($"token-for-{local.Id}", first.Session!.AccessToken);
         Assert.Equal(local.Id, second.Session!.User.Id);
+    }
+
+    [Fact]
+    public async Task Session_WhenAnotherFirstLoadAddsTheLocalUserFirst_UsesThatUser()
+    {
+        var other = new User { Id = Guid.NewGuid(), Email = AuthService.LocalUserEmail, DisplayName = "Local user", PasswordHash = "" };
+        _users.AfterNextFind = () => _users.All.Add(other);
+
+        var session = await CreateService(singleUser: true).GetSessionAsync(default);
+
+        Assert.Same(other, Assert.Single(_users.All));
+        Assert.Equal(other.Id, session.Session!.User.Id);
     }
 
     [Fact]
@@ -71,10 +84,30 @@ public class AuthServiceTests
             service.RegisterAsync(new("DAN@example.com", "Someone", "another password"), default));
     }
 
+    [Fact]
+    public async Task Register_WhenAnotherRequestTakesTheEmailFirst_ReportsAConflict()
+    {
+        _users.AfterNextFind = () => _users.All.Add(
+            new User { Id = Guid.NewGuid(), Email = "dan@example.com", DisplayName = "Dan", PasswordHash = "hash" });
+
+        await Assert.ThrowsAsync<ConflictException>(() =>
+            CreateService().RegisterAsync(new("dan@example.com", "Dan", "correct horse"), default));
+        Assert.Single(_users.All);
+    }
+
+    [Fact]
+    public async Task Register_AcceptsAPasswordOfTheMaximumLength()
+    {
+        await CreateService().RegisterAsync(new("dan@example.com", "Dan", new string('x', AuthService.MaximumPasswordLength)), default);
+
+        Assert.Single(_users.All);
+    }
+
     [Theory]
     [InlineData("not-an-email", "Dan", "correct horse")]
     [InlineData("dan@example.com", " ", "correct horse")]
     [InlineData("dan@example.com", "Dan", "short")]
+    [InlineData("dan@example.com", "Dan", "a password far too long to be worth hashing: ....................................................................................")]
     public async Task Register_RejectsInvalidInput(string email, string displayName, string password)
     {
         await Assert.ThrowsAsync<RequestValidationException>(() =>
@@ -107,6 +140,34 @@ public class AuthServiceTests
     }
 
     [Fact]
+    public async Task Login_ChecksAHashForAnUnknownEmailToo()
+    {
+        var service = CreateService();
+        await service.RegisterAsync(new("dan@example.com", "Dan", "correct horse"), default);
+        _hasher.Verifications = 0;
+
+        await Assert.ThrowsAsync<AuthenticationFailedException>(() =>
+            service.LoginAsync(new("nobody@example.com", "correct horse"), default));
+        await Assert.ThrowsAsync<AuthenticationFailedException>(() =>
+            service.LoginAsync(new("dan@example.com", "wrong password"), default));
+
+        Assert.Equal(2, _hasher.Verifications);
+    }
+
+    [Fact]
+    public async Task Login_RefusesAnOverlongPasswordWithoutHashingIt()
+    {
+        var service = CreateService();
+        await service.RegisterAsync(new("dan@example.com", "Dan", "correct horse"), default);
+        _hasher.Verifications = 0;
+
+        await Assert.ThrowsAsync<AuthenticationFailedException>(() =>
+            service.LoginAsync(new("dan@example.com", new string('x', 100_000)), default));
+
+        Assert.Equal(0, _hasher.Verifications);
+    }
+
+    [Fact]
     public async Task GetCurrentUser_ReturnsTheSignedInUser()
     {
         var service = CreateService();
@@ -122,16 +183,38 @@ public class AuthServiceTests
     {
         public List<User> All { get; } = [];
 
+        /// <summary>Runs once after the next lookup by email, as another request racing this one would.</summary>
+        public Action? AfterNextFind { get; set; }
+
         public Task<User?> FindByIdAsync(Guid id, CancellationToken cancellationToken) =>
             Task.FromResult(All.FirstOrDefault(u => u.Id == id));
 
-        public Task<User?> FindByEmailAsync(string email, CancellationToken cancellationToken) =>
-            Task.FromResult(All.FirstOrDefault(u => u.Email == email));
-
-        public Task AddAsync(User user, CancellationToken cancellationToken)
+        public Task<User?> FindByEmailAsync(string email, CancellationToken cancellationToken)
         {
+            var found = All.FirstOrDefault(u => u.Email == email);
+            var after = AfterNextFind;
+            AfterNextFind = null;
+            after?.Invoke();
+            return Task.FromResult(found);
+        }
+
+        public Task<bool> TryAddAsync(User user, CancellationToken cancellationToken)
+        {
+            if (All.Any(u => u.Email == user.Email))
+                return Task.FromResult(false);
             All.Add(user);
-            return Task.CompletedTask;
+            return Task.FromResult(true);
+        }
+    }
+
+    private sealed class CountingHasher : PasswordHasher<User>
+    {
+        public int Verifications { get; set; }
+
+        public override PasswordVerificationResult VerifyHashedPassword(User user, string hashedPassword, string providedPassword)
+        {
+            Verifications++;
+            return base.VerifyHashedPassword(user, hashedPassword, providedPassword);
         }
     }
 
