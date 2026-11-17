@@ -18,9 +18,13 @@ public static class DependencyInjection
         var connectionString = configuration.GetConnectionString("TalkToRag")
             ?? throw new InvalidOperationException("Set ConnectionStrings:TalkToRag.");
 
+        // Applied after every migration, by the API at startup and by `dotnet ef database update`.
+        var auditorPassword = configuration["Audit:AuditorPassword"];
         services.AddDbContext<TalkToRagDbContext>(options => options
             .UseNpgsql(connectionString, npgsql => npgsql.UseVector())
-            .UseSnakeCaseNamingConvention());
+            .UseSnakeCaseNamingConvention()
+            .UseSeeding((context, _) => AuditorLogin.SetPassword(context, auditorPassword))
+            .UseAsyncSeeding((context, _, cancellationToken) => AuditorLogin.SetPasswordAsync(context, auditorPassword, cancellationToken)));
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<ISourceRepository, SourceRepository>();
         services.AddScoped<INotebookRepository, NotebookRepository>();
@@ -48,7 +52,9 @@ public static class DependencyInjection
 
         services.AddHostedService<SourceIngestionWorker>();
 
-        services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.Section));
+        services.AddOptions<JwtOptions>()
+            .Bind(configuration.GetSection(JwtOptions.Section))
+            .PostConfigure(jwt => jwt.LoadSigningKey());
         services.AddSingleton<ITokenGenerator, JwtTokenGenerator>();
 
         return services;

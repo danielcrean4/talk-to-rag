@@ -1,4 +1,8 @@
-.PHONY: up down logs ps migrate test test-ai test-api test-mcp health web test-web test-e2e lint sample eval
+.PHONY: up env down logs ps migrate test test-ai test-api test-mcp health web test-web test-e2e lint sample eval
+
+# The auditor role's password, from the environment or else from the .env file `make up` writes.
+TALK_TO_RAG_AUDITOR_PASSWORD ?= $(shell sed -n 's/^TALK_TO_RAG_AUDITOR_PASSWORD=//p' .env 2>/dev/null)
+export TALK_TO_RAG_AUDITOR_PASSWORD
 
 # .NET commands use the local SDK when there is one, and the SDK image otherwise.
 ifeq ($(shell command -v dotnet 2>/dev/null),)
@@ -7,14 +11,20 @@ IN_SDK = docker run --rm --add-host host.docker.internal:host-gateway \
 	-v "$(CURDIR)":/src -w /src/services/api
 SDK_IMAGE = mcr.microsoft.com/dotnet/sdk:10.0
 DOTNET = $(IN_SDK) $(SDK_IMAGE)
-DOTNET_MIGRATE = $(IN_SDK) -e ConnectionStrings__TalkToRag="Host=host.docker.internal;Port=5432;Database=talk_to_rag;Username=talk_to_rag;Password=talk_to_rag" $(SDK_IMAGE)
+DOTNET_MIGRATE = $(IN_SDK) -e ConnectionStrings__TalkToRag="Host=host.docker.internal;Port=5432;Database=talk_to_rag;Username=talk_to_rag;Password=talk_to_rag" \
+	-e Audit__AuditorPassword $(SDK_IMAGE)
 else
 DOTNET = cd services/api &&
 DOTNET_MIGRATE = $(DOTNET)
 endif
 
-up:  ## Build and start Postgres, the AI service and the API
+up: env  ## Build and start Postgres, the AI service and the API
 	docker compose up -d --build --wait
+
+env:  ## Give .env a random auditor password once; compose and the audit server read it from there
+	@grep -qs '^TALK_TO_RAG_AUDITOR_PASSWORD=' .env || { \
+		[ -z "$$(tail -c1 .env 2>/dev/null)" ] || echo; \
+		echo "TALK_TO_RAG_AUDITOR_PASSWORD=$$(openssl rand -hex 24)"; } >> .env
 
 down:  ## Stop the stack (data volumes are kept)
 	docker compose down
@@ -25,7 +35,8 @@ logs:
 ps:
 	docker compose ps
 
-migrate:  ## Apply EF Core migrations to the compose Postgres
+migrate: export Audit__AuditorPassword = $(TALK_TO_RAG_AUDITOR_PASSWORD)
+migrate:  ## Apply EF Core migrations to the compose Postgres, and set the auditor password
 	$(DOTNET_MIGRATE) sh -c 'dotnet tool restore && dotnet restore && dotnet ef database update \
 		--project src/TalkToRag.Infrastructure --startup-project src/TalkToRag.Api'
 

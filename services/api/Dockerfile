@@ -29,7 +29,8 @@ COPY --from=web /web/dist/web/browser ./wwwroot
 # The licence notices of the libraries in the bundle, which the build moves out of the scripts.
 COPY --from=web /web/dist/web/3rdpartylicenses.txt ./wwwroot/
 
-RUN mkdir -p /var/talk-to-rag/blobs && chown $APP_UID /var/talk-to-rag/blobs
+RUN mkdir -p /var/talk-to-rag/blobs /var/talk-to-rag/keys && chown $APP_UID /var/talk-to-rag/blobs /var/talk-to-rag/keys \
+    && chmod 700 /var/talk-to-rag/keys
 USER $APP_UID
 
 ENV ASPNETCORE_HTTP_PORTS=5000

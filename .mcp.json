@@ -2,7 +2,7 @@
   "mcpServers": {
     "talk-to-rag-audit": {
       "command": "uv",
-      "args": ["run", "--project", "services/mcp", "talk-to-rag-audit-mcp"]
+      "args": ["run", "--project", "services/mcp", "--env-file", ".env", "talk-to-rag-audit-mcp"]
     }
   }
 }

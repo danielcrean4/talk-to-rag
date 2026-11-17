@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using TalkToRag.Api.Errors;
@@ -27,13 +28,15 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, ClaimsCurrentUser>();
 builder.Services.AddSingleton<IAuditContext, HttpAuditContext>();
 
-// Validate tokens with the same settings JwtTokenGenerator signs them with.
-var jwt = builder.Configuration.GetSection(JwtOptions.Section).Get<JwtOptions>() ?? new JwtOptions();
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+    .AddJwtBearer(options => options.MapInboundClaims = false); // keep "sub" as "sub"
+// Validate tokens with the same settings, and the same key, JwtTokenGenerator signs them with.
+builder.Services
+    .AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+    .Configure<IOptions<JwtOptions>>((options, jwtOptions) =>
     {
-        options.MapInboundClaims = false; // keep "sub" as "sub"
+        var jwt = jwtOptions.Value;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidIssuer = jwt.Issuer,
@@ -61,6 +64,9 @@ builder.Services
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+// Fail now, not at the first sign-in, when there is no usable signing key.
+app.Services.GetRequiredService<IOptions<JwtOptions>>().Value.CreateSigningKey();
 
 // Compose turns this on so a new install has its schema before the first request and before
 // the ingestion worker starts. It is off by default, so tests and `dotnet run` leave the schema alone.

@@ -124,8 +124,8 @@ namespace TalkToRag.Infrastructure.Persistence.Migrations
                 DO $$
                 BEGIN
                     IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'talk_to_rag_auditor') THEN
-                        -- A development password, like the one in compose.yaml; the database listens on 127.0.0.1 only.
-                        CREATE ROLE talk_to_rag_auditor LOGIN PASSWORD 'auditor-local-only';
+                        -- No password: the API sets one from Audit:AuditorPassword after migrating.
+                        CREATE ROLE talk_to_rag_auditor LOGIN;
                     END IF;
                 END
                 $$;

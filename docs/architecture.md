@@ -142,8 +142,8 @@ The SQL in `SearchRepository`:
 - A row's `user_id` is the signed-in user. Ingestion runs outside a request, so `SourceIngestionWorker` names the source's owner with `BackgroundAuditUser` around the call, and the handler uses that when there is no signed-in user.
 - The AI service adds a `trace` list to its responses (`tracing.py`), one entry per model call with the messages and the completion. A streamed summary sends it as an event before `done`, or before `error` when the model fails, so a failed call is stored too.
 - Redaction replaces passage text, and earlier answers sent as context, with a placeholder that gives the length. It also replaces any run of 40 or more letters and digits that a model reply copied from them.
-- The `audit` schema holds views over the redacted columns and over the tables, without source text. The role `talk_to_rag_auditor` may only `SELECT` from it.
-- `services/mcp` exposes that schema to an MCP client over stdio (`.mcp.json`) with the tools `describe`, `query` and `get_ai_call`. Each call opens a connection as the auditor role and runs in a read-only transaction that is rolled back.
+- The `audit` schema holds views over the redacted columns and over the tables, without source text. The role `talk_to_rag_auditor` may only `SELECT` from it. The migrations create it without a password; after every migration the API sets the one in `Audit:AuditorPassword` (from `TALK_TO_RAG_AUDITOR_PASSWORD`, which `make up` writes to `.env`).
+- `services/mcp` exposes that schema to an MCP client over stdio (`.mcp.json`, which loads `.env`) with the tools `describe`, `query` and `get_ai_call`. Each call opens a connection as the auditor role, with the password from `TALK_TO_RAG_AUDITOR_PASSWORD`, and runs in a read-only transaction that is rolled back.
 
 ## Code layout
 
