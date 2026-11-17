@@ -35,7 +35,15 @@
       </div>
     } @else {
       <app-concept-canvas
+        class="wide"
         [layout]="layout()"
+        [selectedId]="selectedId()"
+        [due]="dueByConcept()"
+        (pick)="select($event)"
+      />
+      <app-concept-list
+        class="narrow"
+        [nodes]="layout().nodes"
         [selectedId]="selectedId()"
         [due]="dueByConcept()"
         (pick)="select($event)"

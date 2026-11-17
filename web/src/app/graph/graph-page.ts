@@ -13,12 +13,13 @@ import { DueCards, DueConcept, PracticeApi } from '../api/practice-api';
 import { latestRequest } from '../latest-request';
 import { dueSummary } from '../practice/practice-deck';
 import { ConceptCanvas } from './concept-canvas';
+import { ConceptList } from './concept-list';
 import { ConceptPanel, LinkedPrerequisite } from './concept-panel';
 import { layoutGraph } from './graph-layout';
 
 @Component({
   selector: 'app-graph-page',
-  imports: [FormsModule, RouterLink, ConceptCanvas, ConceptPanel],
+  imports: [FormsModule, RouterLink, ConceptCanvas, ConceptList, ConceptPanel],
   templateUrl: './graph-page.html',
   styleUrl: './graph-page.css',
   providers: [Activity],
