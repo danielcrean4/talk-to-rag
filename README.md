@@ -50,6 +50,8 @@ By default there is no sign-in. The app runs for one local user, which suits a t
 
 To have separate accounts with passwords, start it with `TALK_TO_RAG_SINGLE_USER=false make up`. Each account then sees only its own sources, notebooks and history.
 
+The API signs sign-in tokens with a random key it makes on first start and keeps in a Docker volume. Set `JWT_SIGNING_KEY` (at least 32 bytes) to use your own.
+
 Use `127.0.0.1`, not `localhost`. On macOS, `localhost` can resolve to `::1`, where the AirPlay Receiver listens on port 5000.
 
 ## How it is built
@@ -90,7 +92,7 @@ Models are configured in `services/ai/config/models.toml`. To use a different mo
 
 Each request to the AI service is stored with the prompts and replies of the model calls inside it. The `audit` database schema shows a redacted copy: passage text is replaced by a placeholder that gives its length, and the source, page and section are given in its place.
 
-`.mcp.json` registers the MCP server for clients that read it, such as Claude Code. Its tools are `describe`, `query` (one `SELECT` per call) and `get_ai_call`. It connects with a database role that can read the `audit` schema and nothing else.
+`.mcp.json` registers the MCP server for clients that read it, such as Claude Code. Its tools are `describe`, `query` (one `SELECT` per call) and `get_ai_call`. It connects with a database role that can read the `audit` schema and nothing else. That role's password is `TALK_TO_RAG_AUDITOR_PASSWORD`, which `make up` generates into `.env` the first time; the server reads it from there.
 
 ## Roadmap
 

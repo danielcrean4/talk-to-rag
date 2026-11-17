@@ -221,6 +221,8 @@ public class AuthServiceTests
     private sealed class StubTokens : ITokenGenerator
     {
         public AccessToken CreateToken(User user) => new($"token-for-{user.Id}", DateTimeOffset.UnixEpoch);
+
+        public AccessToken CreateFileToken(Guid userId, Guid sourceId) => throw new NotSupportedException();
     }
 
     private sealed class StubCurrentUser : ICurrentUser

@@ -238,6 +238,12 @@ export interface Message {
   citations: MessageCitation[];
 }
 
+/** Opens one source's file, without a sign-in header, for a few minutes. */
+export interface SourceFileLinkResponse {
+  url: string;
+  expiresAtUtc: string;
+}
+
 export interface ConversationDetails extends ConversationSummary {
   messages: Message[];
 }
@@ -258,6 +264,10 @@ export class Api {
 
   updateSource(id: string, changes: SourceDetailsChange): Observable<Source> {
     return this.http.patch<Source>(`/api/sources/${id}`, changes);
+  }
+
+  sourceFileLink(id: string): Observable<SourceFileLinkResponse> {
+    return this.http.post<SourceFileLinkResponse>(`/api/sources/${id}/file-link`, {});
   }
 
   retrySource(id: string): Observable<void> {

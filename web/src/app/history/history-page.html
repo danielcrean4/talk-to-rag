@@ -51,9 +51,7 @@
           <section class="group">
             <header>
               @if (group.title) {
-                <a class="source" [href]="fileUrl(group)" target="_blank" rel="noopener">{{
-                  group.title
-                }}</a>
+                <a class="source" [appSourceFile]="group.sourceId">{{ group.title }}</a>
               } @else {
                 <span class="source missing">Source no longer available</span>
               }
@@ -70,7 +68,7 @@
                     <span class="number">[{{ citation.number }}]</span>
                     <span class="place">{{ citation.location }}</span>
                     @if (group.title) {
-                      <a [href]="fileUrl(group, citation)" target="_blank" rel="noopener">Open</a>
+                      <a [appSourceFile]="group.sourceId" [at]="fileTarget(citation)">Open</a>
                     }
                   </div>
                   <p class="excerpt" [class.open]="expanded().has(key)">{{ citation.content }}</p>

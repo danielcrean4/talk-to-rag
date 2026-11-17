@@ -3,8 +3,8 @@ import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Observable, concatMap, from, toArray } from 'rxjs';
 import { Api, Notebook, Source, Tag } from '../api';
-import { Auth, errorMessage } from '../auth';
-import { sourceFileUrl } from '../passages';
+import { errorMessage } from '../auth';
+import { SourceFileLink } from '../source-file-link';
 import { SearchSession } from '../search/search-session';
 import { knownTagIds, tagCount, tagsOff, tagsOn, toggleId, withAnyTag } from '../tags';
 import {
@@ -22,13 +22,12 @@ const POLL_MS = 3000;
 
 @Component({
   selector: 'app-sources-page',
-  imports: [DatePipe, FormsModule],
+  imports: [DatePipe, FormsModule, SourceFileLink],
   templateUrl: './sources-page.html',
   styleUrl: './sources-page.css',
 })
 export class SourcesPage implements OnDestroy {
   private readonly api = inject(Api);
-  private readonly auth = inject(Auth);
   private pollTimer: ReturnType<typeof setInterval> | null = null;
 
   protected readonly matched = inject(SearchSession).matchedSourceIds;
@@ -74,10 +73,6 @@ export class SourcesPage implements OnDestroy {
     this.loadSources();
     this.loadNotebooks();
     this.loadTags();
-  }
-
-  fileUrl(source: Source): string {
-    return sourceFileUrl(source.id, this.auth.token());
   }
 
   /** Picks up sources added outside this page, such as by `make sample`. */

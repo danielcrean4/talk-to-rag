@@ -12,7 +12,7 @@
       <p class="quiet">
         From {{ from }}
         @if (card().sourceId; as sourceId) {
-          · <a [href]="fileUrl(sourceId, card())" target="_blank" rel="noopener">Open</a>
+          · <a [appSourceFile]="sourceId" [at]="{ page: card().pageNumber ?? undefined }">Open</a>
         }
       </p>
     }

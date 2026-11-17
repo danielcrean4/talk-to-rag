@@ -104,6 +104,7 @@ Weights are downloaded by each user with `ollama pull`; talk-to-rag does not red
 | [Testcontainers for .NET](https://dotnet.testcontainers.org) | 4.16.0 | MIT | Real PostgreSQL + pgvector container integration tests in `TalkToRag.IntegrationTests` |
 | [xUnit](https://github.com/xunit/xunit) | 2.9.3 (runner 3.1.4) | Apache-2.0 | .NET tests |
 | Microsoft.NET.Test.Sdk | 17.14.1 | MIT | .NET test host |
+| Microsoft.AspNetCore.Mvc.Testing | 10.0.14 | MIT | Starting the API in memory for the file link tests |
 | [coverlet.collector](https://github.com/coverlet-coverage/coverlet) | 6.0.4 | MIT | .NET code coverage |
 | [pytest](https://github.com/pytest-dev/pytest) | 9.2.0 | MIT | Python tests |
 | [HTTPX](https://github.com/encode/httpx) | 0.28.1 | BSD-3-Clause | FastAPI test client |

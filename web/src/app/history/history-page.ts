@@ -3,21 +3,21 @@ import { Component, computed, effect, inject, input, signal } from '@angular/cor
 import { RouterLink } from '@angular/router';
 import { Api, ConversationDetails, ConversationSummary, Source } from '../api';
 import { AnswerText } from '../answer-text';
-import { Auth, errorMessage } from '../auth';
+import { errorMessage } from '../auth';
 import { latestRequest } from '../latest-request';
-import { sourceFileUrl } from '../passages';
-import { CitationGroup, CitationView, conversationTurns } from './conversation-turns';
+import { FileTarget } from '../passages';
+import { SourceFileLink } from '../source-file-link';
+import { CitationView, conversationTurns } from './conversation-turns';
 
 /** Past searches on the left; the one picked by the route on the right. */
 @Component({
   selector: 'app-history-page',
-  imports: [AnswerText, DatePipe, RouterLink],
+  imports: [AnswerText, DatePipe, RouterLink, SourceFileLink],
   templateUrl: './history-page.html',
   styleUrl: './history-page.css',
 })
 export class HistoryPage {
   private readonly api = inject(Api);
-  private readonly auth = inject(Auth);
   private readonly conversationRun = latestRequest();
 
   /** Bound from the `history/:id` route. */
@@ -56,15 +56,8 @@ export class HistoryPage {
     });
   }
 
-  fileUrl(group: CitationGroup, citation?: CitationView): string {
-    if (!citation) {
-      return sourceFileUrl(group.sourceId, this.auth.token());
-    }
-    return sourceFileUrl(
-      group.sourceId,
-      this.auth.token(),
-      citation.page ? { page: citation.page } : { text: citation.content },
-    );
+  fileTarget(citation: CitationView): FileTarget {
+    return citation.page ? { page: citation.page } : { text: citation.content };
   }
 
   citationKey(turnId: string, number: number): string {

@@ -54,6 +54,75 @@ public class JwtTokenGeneratorTests
     }
 
     [Fact]
+    public async Task FileToken_NamesOneSource_ExpiresInFiveMinutes_AndIsNoSignInToken()
+    {
+        var sourceId = Guid.NewGuid();
+        var token = new JwtTokenGenerator(Microsoft.Extensions.Options.Options.Create(Options), new FixedClock(Now)).CreateFileToken(Dan.Id, sourceId);
+
+        var asFileLink = await new JsonWebTokenHandler().ValidateTokenAsync(token.Token, Options.FileLinkValidation());
+        var asSignIn = await new JsonWebTokenHandler().ValidateTokenAsync(token.Token, Options.SignInValidation());
+
+        Assert.True(asFileLink.IsValid, asFileLink.Exception?.Message);
+        Assert.Equal(Dan.Id.ToString(), asFileLink.Claims[JwtRegisteredClaimNames.Sub]);
+        Assert.Equal(sourceId.ToString(), asFileLink.Claims[JwtOptions.SourceClaim]);
+        Assert.Equal(Now.AddMinutes(5), token.ExpiresAtUtc);
+        Assert.False(asSignIn.IsValid);
+    }
+
+    [Fact]
+    public async Task SignInToken_IsNoFileLink()
+    {
+        var token = new JwtTokenGenerator(Microsoft.Extensions.Options.Options.Create(Options), new FixedClock(Now)).CreateToken(Dan);
+
+        var result = await new JsonWebTokenHandler().ValidateTokenAsync(token.Token, Options.FileLinkValidation());
+
+        Assert.False(result.IsValid);
+    }
+
+    [Fact]
     public void ShortSigningKey_IsRefused() =>
         Assert.Throws<InvalidOperationException>(() => new JwtOptions { SigningKey = "too-short" }.CreateSigningKey());
+
+    [Fact]
+    public void MissingSigningKey_IsRefused_WithWhatToSet()
+    {
+        var error = Assert.Throws<InvalidOperationException>(() => new JwtOptions().CreateSigningKey());
+
+        Assert.Contains("Jwt__SigningKey", error.Message);
+        Assert.Contains("Jwt__SigningKeyFile", error.Message);
+    }
+
+    [Fact]
+    public void SigningKeyFile_IsMadeOnce_AndReadBackAfterARestart()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"talk-to-rag-keys-{Guid.NewGuid()}", "jwt-signing-key");
+        try
+        {
+            var first = new JwtOptions { SigningKeyFile = path };
+            first.LoadSigningKey();
+            var second = new JwtOptions { SigningKeyFile = path };
+            second.LoadSigningKey();
+
+            Assert.True(first.CreateSigningKey().KeySize >= 256);
+            Assert.Equal(first.SigningKey, second.SigningKey);
+            if (!OperatingSystem.IsWindows())
+                Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(path));
+        }
+        finally
+        {
+            Directory.Delete(Path.GetDirectoryName(path)!, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void SigningKeyFile_IsNotUsed_WhenAKeyIsSet()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"talk-to-rag-keys-{Guid.NewGuid()}", "jwt-signing-key");
+        var options = new JwtOptions { SigningKey = Options.SigningKey, SigningKeyFile = path };
+
+        options.LoadSigningKey();
+
+        Assert.Equal(Options.SigningKey, options.SigningKey);
+        Assert.False(File.Exists(path));
+    }
 }

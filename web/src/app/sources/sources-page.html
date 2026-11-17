@@ -186,14 +186,9 @@
       (dragend)="endDrag()"
     >
       <div class="head">
-        <a
-          class="title"
-          [href]="fileUrl(source)"
-          target="_blank"
-          rel="noopener"
-          [title]="'Open ' + source.fileName"
-          >{{ source.title }}</a
-        >
+        <a class="title" [appSourceFile]="source.id" [title]="'Open ' + source.fileName">{{
+          source.title
+        }}</a>
         <span class="status-badge" [class]="source.status.toLowerCase()">{{ source.status }}</span>
       </div>
       <div class="meta">

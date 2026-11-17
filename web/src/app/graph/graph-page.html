@@ -213,7 +213,7 @@
             </div>
             <p>{{ passage.snippet }}</p>
             <div class="actions">
-              <a [href]="fileUrl(passage)" target="_blank" rel="noopener">Open</a>
+              <a [appSourceFile]="passage.sourceId" [at]="fileTarget(passage)">Open</a>
               <button
                 type="button"
                 (click)="unlinkPassage(concept, passage)"
@@ -242,7 +242,7 @@
               </div>
               <p>{{ suggestion.snippet }}</p>
               <div class="actions">
-                <a [href]="fileUrl(suggestion)" target="_blank" rel="noopener">Open</a>
+                <a [appSourceFile]="suggestion.sourceId" [at]="fileTarget(suggestion)">Open</a>
                 @if (suggestion.linked) {
                   <span class="quiet">Linked</span>
                 } @else {

@@ -88,3 +88,20 @@ def test_refuses_a_login_that_can_read_the_tables(database, monkeypatch):
 
     with pytest.raises(audit.AuditError, match="will not use it"):
         audit.run("SELECT 1")
+
+
+def test_logs_in_as_the_auditor_with_the_password_from_the_environment(monkeypatch):
+    monkeypatch.delenv("TALK_TO_RAG_AUDIT_DSN", raising=False)
+    monkeypatch.setenv("TALK_TO_RAG_AUDITOR_PASSWORD", "from-the-environment")
+
+    settings = conninfo_to_dict(audit.dsn())
+
+    assert settings["user"] == "talk_to_rag_auditor"
+    assert settings["password"] == "from-the-environment"
+
+
+def test_has_no_password_of_its_own(monkeypatch):
+    monkeypatch.delenv("TALK_TO_RAG_AUDIT_DSN", raising=False)
+    monkeypatch.delenv("TALK_TO_RAG_AUDITOR_PASSWORD", raising=False)
+
+    assert "password" not in conninfo_to_dict(audit.dsn())

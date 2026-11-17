@@ -8,8 +8,9 @@ from dataclasses import dataclass
 from typing import Any
 
 import psycopg
+from psycopg.conninfo import make_conninfo
 
-DEFAULT_DSN = "postgresql://talk_to_rag_auditor:auditor-local-only@127.0.0.1:5432/talk_to_rag"
+DEFAULT_DSN = "postgresql://talk_to_rag_auditor@127.0.0.1:5432/talk_to_rag"
 MAX_ROWS = 500
 MAX_CELL_CHARACTERS = 200_000
 STATEMENT_TIMEOUT = "10s"
@@ -51,7 +52,9 @@ class Result:
 
 
 def dsn() -> str:
-    return os.environ.get("TALK_TO_RAG_AUDIT_DSN", DEFAULT_DSN)
+    if "TALK_TO_RAG_AUDIT_DSN" in os.environ:
+        return os.environ["TALK_TO_RAG_AUDIT_DSN"]
+    return make_conninfo(DEFAULT_DSN, password=os.environ.get("TALK_TO_RAG_AUDITOR_PASSWORD") or None)
 
 
 def run(sql: str, max_rows: int = 50, max_cell_characters: int = 2000) -> Result:

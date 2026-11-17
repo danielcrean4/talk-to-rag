@@ -35,4 +35,27 @@ public sealed class JwtTokenGenerator(IOptions<JwtOptions> options, TimeProvider
 
         return new AccessToken(token, expires);
     }
+
+    public AccessToken CreateFileToken(Guid userId, Guid sourceId)
+    {
+        var now = clock.GetUtcNow();
+        var expires = now.AddMinutes(_options.FileLinkMinutes);
+
+        var token = _handler.CreateToken(new SecurityTokenDescriptor
+        {
+            Issuer = _options.Issuer,
+            Audience = _options.FileAudience,
+            IssuedAt = now.UtcDateTime,
+            NotBefore = now.UtcDateTime,
+            Expires = expires.UtcDateTime,
+            Subject = new ClaimsIdentity(
+            [
+                new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
+                new Claim(JwtOptions.SourceClaim, sourceId.ToString()),
+            ]),
+            SigningCredentials = new SigningCredentials(_options.CreateSigningKey(), SecurityAlgorithms.HmacSha256),
+        });
+
+        return new AccessToken(token, expires);
+    }
 }
