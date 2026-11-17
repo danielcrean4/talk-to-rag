@@ -23,5 +23,13 @@
   }
 </header>
 <main>
-  <router-outlet />
+  @if (auth.unreachable(); as unreachable) {
+    <section role="alert">
+      <h1>Can't reach the API</h1>
+      <p>{{ unreachable.reason }}</p>
+      <button type="button" (click)="retry(unreachable.url)">Try again</button>
+    </section>
+  } @else {
+    <router-outlet />
+  }
 </main>
