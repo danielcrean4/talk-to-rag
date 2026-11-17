@@ -83,19 +83,19 @@ describe('locationLabel', () => {
 });
 
 describe('sourceFileUrl', () => {
+  const link = '/api/sources/s1/file?access=a.b';
+
   it('opens a PDF at the physical page', () => {
-    expect(sourceFileUrl('s1', 'a b', { page: 112 })).toBe(
-      '/api/sources/s1/file?token=a%20b#page=112',
-    );
+    expect(sourceFileUrl(link, { page: 112 })).toBe(`${link}#page=112`);
   });
 
   it('points at the first words of the passage when there is no page', () => {
-    expect(sourceFileUrl('s1', 't', { text: 'use <mark>signals</mark>\n  here' })).toBe(
-      '/api/sources/s1/file?token=t#:~:text=use%20signals%20here',
+    expect(sourceFileUrl(link, { text: 'use <mark>signals</mark>\n  here' })).toBe(
+      `${link}#:~:text=use%20signals%20here`,
     );
   });
 
   it('opens the whole file otherwise', () => {
-    expect(sourceFileUrl('s1', null)).toBe('/api/sources/s1/file?token=');
+    expect(sourceFileUrl(link)).toBe(link);
   });
 });

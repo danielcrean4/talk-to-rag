@@ -12,22 +12,22 @@ import {
   PassageSuggestion,
   Place,
 } from '../api';
-import { Auth, errorMessage } from '../auth';
+import { errorMessage } from '../auth';
 import { isPagedCitation } from '../history/conversation-turns';
 import { latestRequest } from '../latest-request';
-import { sourceFileUrl } from '../passages';
+import { FileTarget } from '../passages';
+import { SourceFileLink } from '../source-file-link';
 import { dueSummary, masteryDetail } from '../practice/practice-deck';
 import { NODE_HEIGHT, NODE_WIDTH, layoutGraph } from './graph-layout';
 
 @Component({
   selector: 'app-graph-page',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, SourceFileLink],
   templateUrl: './graph-page.html',
   styleUrl: './graph-page.css',
 })
 export class GraphPage {
   private readonly api = inject(Api);
-  private readonly auth = inject(Auth);
   private readonly detailsRun = latestRequest();
 
   readonly nodeWidth = NODE_WIDTH;
@@ -233,12 +233,8 @@ export class GraphPage {
   }
 
   /** Opens a PDF at the passage's page, and other sources at the passage's first words. */
-  fileUrl(place: Place): string {
-    return sourceFileUrl(
-      place.sourceId,
-      this.auth.token(),
-      isPagedCitation(place) ? { page: place.pageNumber } : { text: place.snippet },
-    );
+  fileTarget(place: Place): FileTarget {
+    return isPagedCitation(place) ? { page: place.pageNumber } : { text: place.snippet };
   }
 
   private reload(): void {

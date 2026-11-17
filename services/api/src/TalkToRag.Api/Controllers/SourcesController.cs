@@ -1,7 +1,10 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Net.Http.Headers;
+using TalkToRag.Api.Security;
 using TalkToRag.Application.Common.Exceptions;
+using TalkToRag.Application.Common.Interfaces;
 using TalkToRag.Application.Sources;
 
 namespace TalkToRag.Api.Controllers;
@@ -57,7 +60,27 @@ public sealed class SourcesController(ISourceService sourceService) : Controller
     public Task<SourceDto> Update(Guid id, UpdateSourceRequest request, CancellationToken cancellationToken) =>
         sourceService.UpdateAsync(id, request, cancellationToken);
 
+    /// <summary>A link to the file for a new tab, which cannot send the sign-in header. It opens this file only, for a few minutes.</summary>
+    [HttpPost("{id:guid}/file-link")]
+    [ProducesResponseType<SourceFileLinkResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<SourceFileLinkResponse> CreateFileLink(
+        Guid id,
+        [FromServices] ITokenGenerator tokens,
+        [FromServices] ICurrentUser currentUser,
+        CancellationToken cancellationToken)
+    {
+        // Answers 404 for a source that is not the caller's.
+        await sourceService.GetByIdAsync(id, cancellationToken);
+        var token = tokens.CreateFileToken(currentUser.UserId, id);
+        return new SourceFileLinkResponse(
+            $"/api/sources/{id}/file?{SourceFileLink.QueryParameter}={Uri.EscapeDataString(token.Token)}",
+            token.ExpiresAtUtc);
+    }
+
     [HttpGet("{id:guid}/file")]
+    [Authorize(AuthenticationSchemes = $"{JwtBearerDefaults.AuthenticationScheme},{SourceFileLink.Scheme}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

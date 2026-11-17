@@ -1,8 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.JsonWebTokens;
-using Microsoft.IdentityModel.Tokens;
 using TalkToRag.Api.Errors;
 using TalkToRag.Api.Security;
 using TalkToRag.Application;
@@ -30,37 +28,16 @@ builder.Services.AddSingleton<IAuditContext, HttpAuditContext>();
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options => options.MapInboundClaims = false); // keep "sub" as "sub"
+    .AddJwtBearer(options => options.MapInboundClaims = false) // keep "sub" as "sub"
+    .AddJwtBearer(SourceFileLink.Scheme, options => options.MapInboundClaims = false);
 // Validate tokens with the same settings, and the same key, JwtTokenGenerator signs them with.
+// A sign-in token is only read from the Authorization header, never from the URL.
 builder.Services
     .AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
-    .Configure<IOptions<JwtOptions>>((options, jwtOptions) =>
-    {
-        var jwt = jwtOptions.Value;
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidIssuer = jwt.Issuer,
-            ValidAudience = jwt.Audience,
-            IssuerSigningKey = jwt.CreateSigningKey(),
-            NameClaimType = JwtRegisteredClaimNames.Name,
-        };
-        options.Events = new JwtBearerEvents
-        {
-            OnMessageReceived = context =>
-            {
-                // Only the source file route takes ?token=, because a PDF viewer tab can't send headers.
-                // Anywhere else a token in the URL would leak into history and logs.
-                if (string.IsNullOrEmpty(context.Token) &&
-                    IsSourceFileRequest(context.Request.Path) &&
-                    context.Request.Query.TryGetValue("token", out var token) &&
-                    !string.IsNullOrEmpty(token))
-                {
-                    context.Token = token;
-                }
-                return Task.CompletedTask;
-            }
-        };
-    });
+    .Configure<IOptions<JwtOptions>>((options, jwt) => options.TokenValidationParameters = jwt.Value.SignInValidation());
+builder.Services
+    .AddOptions<JwtBearerOptions>(SourceFileLink.Scheme)
+    .Configure<IOptions<JwtOptions>>((options, jwt) => SourceFileLink.Configure(options, jwt.Value));
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
@@ -120,8 +97,5 @@ static bool IsAppPageRequest(HttpRequest request) =>
     !request.Path.StartsWithSegments("/api") &&
     !Path.HasExtension(request.Path.Value);
 
-static bool IsSourceFileRequest(PathString path)
-{
-    var segments = path.Value?.Split('/', StringSplitOptions.RemoveEmptyEntries) ?? [];
-    return segments is ["api", "sources", var id, "file"] && Guid.TryParse(id, out _);
-}
+/// <summary>Lets <see cref="WebApplicationFactory{TEntryPoint}"/> tests start the app.</summary>
+public partial class Program;

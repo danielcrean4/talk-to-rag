@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 
 namespace TalkToRag.Infrastructure.Security;
@@ -12,6 +13,13 @@ public sealed class JwtOptions
     public string Issuer { get; set; } = "talk-to-rag";
     public string Audience { get; set; } = "talk-to-rag";
     public int LifetimeMinutes { get; set; } = 60;
+
+    /// <summary>The audience of file links, so a file link is never taken for a sign-in token or the other way round.</summary>
+    public string FileAudience { get; set; } = "talk-to-rag-files";
+    public int FileLinkMinutes { get; set; } = 5;
+
+    /// <summary>The claim on a file link that names the one source it opens.</summary>
+    public const string SourceClaim = "source";
 
     /// <summary>Secret for signing tokens. Never commit a real one: set Jwt__SigningKey in the environment.</summary>
     public string SigningKey { get; set; } = "";
@@ -39,6 +47,18 @@ public sealed class JwtOptions
         }
         SigningKey = File.ReadAllText(SigningKeyFile).Trim();
     }
+
+    public TokenValidationParameters SignInValidation() => Validation(Audience);
+
+    public TokenValidationParameters FileLinkValidation() => Validation(FileAudience);
+
+    private TokenValidationParameters Validation(string audience) => new()
+    {
+        ValidIssuer = Issuer,
+        ValidAudience = audience,
+        IssuerSigningKey = CreateSigningKey(),
+        NameClaimType = JwtRegisteredClaimNames.Name,
+    };
 
     public SymmetricSecurityKey CreateSigningKey()
     {

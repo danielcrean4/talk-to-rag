@@ -181,7 +181,7 @@ API (`services/api`, all under `/api`; all but `health`, `auth/register`, `auth/
 |---|---|
 | Health | `GET health` |
 | Auth | `POST auth/register`, `POST auth/login`, `GET auth/session`, `GET auth/me` |
-| Sources | `POST sources`, `GET sources`, `GET sources/{id}`, `GET sources/{id}/file` (also takes `?token=`), `PATCH sources/{id}` (license, source URL), `POST sources/{id}/retry`, `DELETE sources/{id}` |
+| Sources | `POST sources`, `GET sources`, `GET sources/{id}`, `POST sources/{id}/file-link` (a URL that opens the file for 5 minutes), `GET sources/{id}/file` (also takes that link's `?access=`; never a sign-in token in the URL), `PATCH sources/{id}` (license, source URL), `POST sources/{id}/retry`, `DELETE sources/{id}` |
 | Notebooks | `POST`, `GET notebooks`; `GET`, `PATCH`, `DELETE notebooks/{id}`; `PUT`, `DELETE notebooks/{id}/sources/{sourceId}` |
 | Tags | `POST`, `GET tags`; `DELETE tags/{id}`; `GET sources/{id}/tags`; `PUT`, `DELETE sources/{id}/tags/{tagId}` |
 | Search | `POST search`, `POST search/{conversationId}/summary`, `GET search/{conversationId}/summary/stream` |

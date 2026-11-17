@@ -89,13 +89,14 @@ export function locationLabel(location: Location, paged: boolean): string {
   return section ? `${section} · ${page}` : page;
 }
 
-/** The file route takes the token as a query parameter because a new tab cannot send a header. */
-export function sourceFileUrl(
-  sourceId: string,
-  token: string | null,
-  target: { page?: number; text?: string } = {},
-): string {
-  const url = `/api/sources/${sourceId}/file?token=${encodeURIComponent(token ?? '')}`;
+/** Where to open a source's file: a PDF at a page, other files at a passage's first words. */
+export interface FileTarget {
+  page?: number;
+  text?: string;
+}
+
+/** The file link with a fragment that opens it at the target. */
+export function sourceFileUrl(url: string, target: FileTarget = {}): string {
   if (target.page) {
     return `${url}#page=${target.page}`;
   }

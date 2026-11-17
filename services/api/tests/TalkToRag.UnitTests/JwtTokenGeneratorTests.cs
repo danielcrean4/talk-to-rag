@@ -54,6 +54,32 @@ public class JwtTokenGeneratorTests
     }
 
     [Fact]
+    public async Task FileToken_NamesOneSource_ExpiresInFiveMinutes_AndIsNoSignInToken()
+    {
+        var sourceId = Guid.NewGuid();
+        var token = new JwtTokenGenerator(Microsoft.Extensions.Options.Options.Create(Options), new FixedClock(Now)).CreateFileToken(Dan.Id, sourceId);
+
+        var asFileLink = await new JsonWebTokenHandler().ValidateTokenAsync(token.Token, Options.FileLinkValidation());
+        var asSignIn = await new JsonWebTokenHandler().ValidateTokenAsync(token.Token, Options.SignInValidation());
+
+        Assert.True(asFileLink.IsValid, asFileLink.Exception?.Message);
+        Assert.Equal(Dan.Id.ToString(), asFileLink.Claims[JwtRegisteredClaimNames.Sub]);
+        Assert.Equal(sourceId.ToString(), asFileLink.Claims[JwtOptions.SourceClaim]);
+        Assert.Equal(Now.AddMinutes(5), token.ExpiresAtUtc);
+        Assert.False(asSignIn.IsValid);
+    }
+
+    [Fact]
+    public async Task SignInToken_IsNoFileLink()
+    {
+        var token = new JwtTokenGenerator(Microsoft.Extensions.Options.Options.Create(Options), new FixedClock(Now)).CreateToken(Dan);
+
+        var result = await new JsonWebTokenHandler().ValidateTokenAsync(token.Token, Options.FileLinkValidation());
+
+        Assert.False(result.IsValid);
+    }
+
+    [Fact]
     public void ShortSigningKey_IsRefused() =>
         Assert.Throws<InvalidOperationException>(() => new JwtOptions { SigningKey = "too-short" }.CreateSigningKey());
 

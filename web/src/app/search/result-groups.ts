@@ -1,20 +1,18 @@
-import { Component, inject, input } from '@angular/core';
+import { Component, input } from '@angular/core';
 import { PassageGroup, PassageHit } from '../api';
-import { Auth } from '../auth';
-import { isPaged, locationLabel, sourceFileUrl } from '../passages';
+import { FileTarget, isPaged, locationLabel } from '../passages';
 import { Snippet } from '../snippet';
+import { SourceFileLink } from '../source-file-link';
 
 /** Search hits grouped by source; each passage can be opened in the source at its page. */
 @Component({
   selector: 'app-result-groups',
-  imports: [Snippet],
+  imports: [Snippet, SourceFileLink],
   template: `
     @for (group of groups(); track group.source.id) {
       <section class="group" [attr.aria-label]="group.source.title">
         <header>
-          <a class="title" [href]="fileUrl(group)" target="_blank" rel="noopener">{{
-            group.source.title
-          }}</a>
+          <a class="title" [appSourceFile]="group.source.id">{{ group.source.title }}</a>
           <span class="quiet"
             >{{ group.passages.length }}
             {{ group.passages.length === 1 ? 'passage' : 'passages' }}</span
@@ -30,7 +28,7 @@ import { Snippet } from '../snippet';
               <div class="where">
                 <span class="number">[{{ passage.number }}]</span>
                 <span class="place">{{ where(group, passage) }}</span>
-                <a [href]="fileUrl(group, passage)" target="_blank" rel="noopener">
+                <a [appSourceFile]="group.source.id" [at]="fileTarget(group, passage)">
                   {{
                     paged(group)
                       ? 'Open at p. ' + (passage.pageLabel ?? passage.pageNumber)
@@ -111,8 +109,6 @@ import { Snippet } from '../snippet';
   `,
 })
 export class ResultGroups {
-  private readonly auth = inject(Auth);
-
   readonly groups = input.required<PassageGroup[]>();
   readonly flashed = input<number | null>(null);
 
@@ -124,14 +120,7 @@ export class ResultGroups {
     return locationLabel(passage, this.paged(group));
   }
 
-  fileUrl(group: PassageGroup, passage?: PassageHit): string {
-    if (!passage) {
-      return sourceFileUrl(group.source.id, this.auth.token());
-    }
-    return sourceFileUrl(
-      group.source.id,
-      this.auth.token(),
-      this.paged(group) ? { page: passage.pageNumber } : { text: passage.snippet },
-    );
+  fileTarget(group: PassageGroup, passage: PassageHit): FileTarget {
+    return this.paged(group) ? { page: passage.pageNumber } : { text: passage.snippet };
   }
 }

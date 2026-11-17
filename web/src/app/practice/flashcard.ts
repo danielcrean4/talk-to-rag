@@ -1,18 +1,16 @@
-import { Component, effect, inject, input, output, signal } from '@angular/core';
+import { Component, effect, input, output, signal } from '@angular/core';
 import { Question } from '../api';
-import { Auth } from '../auth';
-import { sourceFileUrl } from '../passages';
+import { SourceFileLink } from '../source-file-link';
 import { MARKS, cardSource } from './practice-deck';
 
 /** One flashcard: the prompt, then on request the answer, its source and the marks. */
 @Component({
   selector: 'app-flashcard',
+  imports: [SourceFileLink],
   templateUrl: './flashcard.html',
   styleUrl: './flashcard.css',
 })
 export class Flashcard {
-  private readonly auth = inject(Auth);
-
   readonly card = input.required<Question>();
   /** Such as "Card 2 of 5". */
   readonly progress = input('');
@@ -31,9 +29,5 @@ export class Flashcard {
       this.card();
       this.revealed.set(false);
     });
-  }
-
-  protected fileUrl(sourceId: string, question: Question): string {
-    return sourceFileUrl(sourceId, this.auth.token(), { page: question.pageNumber ?? undefined });
   }
 }
